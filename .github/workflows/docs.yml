@@ -31,12 +31,12 @@ jobs:
       - uses: actions/upload-artifact@v1
         with:
           name: DocumentationHTML
-          path: docs/_build/html/
+          path: site/
 
       - name: Commit documentation changes
         run: |
           git clone https://github.com/geometry-labs/rsis.git --branch docs --single-branch gh-pages
-          cp -r docs/_build/html/* gh-pages/
+          cp -r site/* gh-pages/
           cd gh-pages
           touch .nojekyll
           git config --local user.email "action@github.com"
