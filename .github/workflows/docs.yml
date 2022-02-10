@@ -33,23 +33,5 @@ jobs:
           name: DocumentationHTML
           path: site/
 
-      - name: Commit documentation changes
-        run: |
-          git clone https://github.com/geometry-labs/rsis.git --branch docs --single-branch gh-pages
-          cp -r site/* gh-pages/
-          cd gh-pages
-          touch .nojekyll
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add .
-          git commit -m "Update documentation" -a || true
-          # The above command will fail if no changes were present, so we ignore
-          # the return code.
-
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          branch: docs
-          directory: gh-pages
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
+      - name: Push changes gh-pages
+        run: mkdocs gh-deploy --force
