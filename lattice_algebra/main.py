@@ -7,7 +7,7 @@ norm and constant weight.
 Documentation
 -------------
 
-[This](https://www.google.com) is a broken link to the URL where documentation can be found.
+Documentation is hosted at [https://geometry-labs.github.io/lattice-algebra/](https://geometry-labs.github.io/lattice-algebra/)
 
 Hosting
 -------
