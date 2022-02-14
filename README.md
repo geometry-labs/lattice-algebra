@@ -5,11 +5,10 @@
 [![codecov](https://codecov.io/gh/geometry-labs/lattice-algebra/branch/main/graphs/badge.svg?branch=main)](https://codecov.io/github/geometry-labs/lattice-algebra?branch=main)
 [![main-tests](https://github.com/geometry-labs/lattice-algebra/actions/workflows/main.yml/badge.svg)](https://github.com/geometry-labs/lattice-algebra/actions)
 
-Infrastructure package for lattice-based crypto.
+This library is a fundamental infrastructure package for building lattice-based cryptography.
 
-## Installation
-
-`pip install lattice-algebra`
++ Installation: `pip install lattice-algebra`
++ Documentation: https://geometry-labs.github.io/lattice-algebra/
 
 ## Introduction
 
