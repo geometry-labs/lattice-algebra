@@ -5,7 +5,6 @@ Todo list:
  - more and more useful fixtures will make testing faster and more efficient
  - more and more rigorous tests
 """
-
 import pytest
 from lattice_algebra.main import *
 from copy import deepcopy
@@ -41,324 +40,349 @@ pars_for_testing: dict = {
     'lgn': lgn_for_testing
 }
 
-
-@pytest.fixture
-def small_q_is_prime() -> bool:
-    return is_prime(small_q_for_testing)
-
-
-@pytest.fixture
-def small_non_prime_is_not_prime() -> bool:
-    return not is_prime(small_non_prime_for_testing)
-
-
-# @pytest.mark.skip
-def test_is_prime(small_q_is_prime, small_non_prime_is_not_prime):
-    assert small_q_is_prime and small_non_prime_is_not_prime
-
+IS_PRIME_CASES = [
+    (17, True),
+    (8675309, True),
+    (16, False),
+    (small_q_for_testing, True),
+    (small_q_for_testing + 1, False),
+    (modulus_for_testing, True),
+    (modulus_for_testing - 1, False)
+]
 
 # @pytest.mark.skip
-def test_is_pow_two():
-    for i in range(1, 10):
-        assert is_pow_two(2 ** i)
-        for j in range(1, 2 ** i):
-            assert not is_pow_two(2 ** i + j)
-        assert is_pow_two(2 ** i + 2 ** i)
+@pytest.mark.parametrize("q,expected_output", IS_PRIME_CASES)
+def test_is_prime(q, expected_output):
+    assert is_prime(q=q) == expected_output
 
 
-@pytest.fixture
-def small_q_small_d_are_ntt_friendly() -> bool:
-    return is_ntt_friendly_prime(q=small_q_for_testing, d=small_d_for_testing)
+IS_POW_TWO_CASES = [
+    (2, True),
+    (4, True),
+    (8, True),
+    (16, True),
+    (3, False),
+    (5, False),
+    (9, False),
+    (17, False)
+]
+@pytest.mark.parametrize("d,expected_output", IS_POW_TWO_CASES)
+def test_is_pow_two(d, expected_output):
+    assert is_pow_two(val=d) == expected_output
 
 
-@pytest.fixture
-def small_non_prime_small_d_is_not_ntt_friendly() -> bool:
-    return not is_ntt_friendly_prime(q=small_non_prime_for_testing, d=small_d_for_testing)
+HAS_PRIM_ROU_CASES = [
+    (17, 8, True),
+    (18, 8, False),
+    (33, 8, True),
+    (34, 8, False),
+    (257, 64, True),  # SWIFFT parameters
+    (258, 64, False),
+    (8380417, 256, True),  # CRYSTALS-Dilithium
+    (8380418, 256, False),
+    (201, 25, True),  # We don't need the primality of q or power-of-two d
+]
+
+@pytest.mark.parametrize("q,d,expected_output", HAS_PRIM_ROU_CASES)
+def test_has_prim_rou(q, d, expected_output):
+    assert has_prim_rou(q=q, d=d) == expected_output
 
 
-@pytest.fixture
-def small_non_ntt_prime_is_not_ntt_friendly() -> bool:
-    return not is_ntt_friendly_prime(q=small_non_ntt_prime_for_testing, d=small_d_for_testing)
+NTT_FRIENDLY_CASES = [
+    (True, True, True, True),
+    (True, True, False, False),
+    (True, False, True, False),
+    (False, True, True, False),
+    (True, False, False, False),
+    (False, True, False, False),
+    (False, False, True, False),
+    (False, False, False, False),
+]
+
+@pytest.mark.parametrize("foo,bar,baz,expected_output", NTT_FRIENDLY_CASES)
+def test_is_ntt_friendly_prime_with_mock(mocker, foo, bar, baz, expected_output):
+    mocker.patch('lattice_algebra.main.is_prime', return_value=foo)
+    mocker.patch('lattice_algebra.main.is_pow_two', return_value=bar)
+    mocker.patch('lattice_algebra.main.has_prim_rou', return_value=baz)
+    assert is_ntt_friendly_prime(q=1, d=1) == expected_output  # the actual input doesn't matter
 
 
-# @pytest.mark.skip
-def test_is_ntt_friendly_prime(small_q_small_d_are_ntt_friendly, small_non_prime_small_d_is_not_ntt_friendly,
-                               small_non_ntt_prime_is_not_ntt_friendly):
-    assert small_q_small_d_are_ntt_friendly and small_non_prime_small_d_is_not_ntt_friendly and \
-           small_non_ntt_prime_is_not_ntt_friendly
+IS_PRIM_ROU_CASES = [
+    (17, 8, 3, True),
+    (17, 8, 4, False),
+    (17, 8, 5, True),
+    (17, 8, 6, True),
+    (17, 8, 7, True),
+    (17, 8, 8, False),
+    (17, 8, 9, False),
+    (17, 8, 10, True),
+    (17, 8, 11, True),
+    (17, 8, 12, True),
+    (17, 8, 13, False),
+    (17, 8, 14, True),
+    (17, 8, 15, False),
+    (17, 8, 16, False),
+    (8380417, 256, 1753, True),  # CRYSTALS-Dilithium
+    (8380417, 257, 1753, False),
+    (8380418, 256, 1753, False),
+    (257, 64, 42, True),  # SWIFFT
+    (257, 65, 42, False),
+    (258, 64, 42, False),
+]
+
+@pytest.mark.parametrize("q,d,i,expected_output", IS_PRIM_ROU_CASES)
+def test_is_prim_rou(q, d, i, expected_output):
+    assert is_prim_rou(q=q, d=d, val=i) == expected_output
 
 
-@pytest.fixture
-def scan_for_prim_rou() -> List[int]:
-    return [
-        i for i in range(2, small_q_for_testing) if is_prim_rou(q=small_q_for_testing, d=small_d_for_testing, val=i)
-    ]
-
-
-# @pytest.mark.skip
-def test_is_prim_rou(scan_for_prim_rou):
-    assert scan_for_prim_rou == allowed_primitive_roots_of_unity_for_small_q_and_small_d
-
-
-@pytest.fixture
-def small_q_small_d_prim_rou() -> Tuple[int, int]:
-    return get_prim_rou_and_rou_inv(q=small_q_for_testing, d=small_d_for_testing)
-
-
-@pytest.fixture
-def prim_rou_and_inv_for_testing() -> Tuple[int, int]:
-    return get_prim_rou_and_rou_inv(q=modulus_for_testing, d=degree_for_testing)
-
-
-# @pytest.mark.skip
-def test_get_prim_rou_and_rou_inv(small_q_small_d_prim_rou):
+def test_get_prim_rou_and_rou_inv_value_errors():
     with pytest.raises(ValueError):
         get_prim_rou_and_rou_inv(q=small_non_prime_for_testing, d=small_d_for_testing)
     with pytest.raises(ValueError):
         get_prim_rou_and_rou_inv(q=small_non_ntt_prime_for_testing, d=small_d_for_testing)
-    assert not isinstance(small_q_small_d_prim_rou, bool) and isinstance(small_q_small_d_prim_rou, tuple)
-    assert isinstance(small_q_small_d_prim_rou[0], int) and isinstance(small_q_small_d_prim_rou[1], int)
-    assert small_q_small_d_prim_rou[0] is not None and small_q_small_d_prim_rou[1] is not None
-    assert small_q_small_d_prim_rou[0] == min(allowed_primitive_roots_of_unity_for_small_q_and_small_d)
-    assert small_q_small_d_prim_rou[0] * small_q_small_d_prim_rou[1] % small_q_for_testing == 1
 
 
-# @pytest.mark.skip
-def test_is_bitstring():
-    assert is_bitstring('100001000101111111101101')
-    assert not is_bitstring('hello world')
+GET_PRIM_ROU_AND_ROU_INV_CASES = [
+    (257, 64, (9, 200)),
+    (8380417, 256, (1753, 731434)),
+]
 
 
-@pytest.fixture
-def three_bit_rev() -> List[int]:
-    return [bit_rev(3, i) for i in range(8)]
+@pytest.mark.parametrize("q,d,expected_output", GET_PRIM_ROU_AND_ROU_INV_CASES)
+def test_get_prim_rou_and_rou_inv(q, d, expected_output):
+    x, y = get_prim_rou_and_rou_inv(q=q, d=d)
+    assert x, y == expected_output
+    assert x != 0
+    assert y != 0
+    assert (x * y) % q == 1
+    assert all(x ** k % q != 0 for k in range(2, 2*d))
 
 
-@pytest.fixture
-def expected_three_bit_rev() -> List[int]:
-    return [0, 4, 2, 6, 1, 5, 3, 7]
+IS_BITSTRING_CASES = [
+    ('0101100101', True),
+    ('1010011010', True),
+    (8675309, False),
+    ('hello world', False)
+]
 
 
-# @pytest.mark.skip
-def test_bit_rev(three_bit_rev, expected_three_bit_rev):
-    assert three_bit_rev == expected_three_bit_rev
+@pytest.mark.parametrize("x,expected_output", IS_BITSTRING_CASES)
+def test_is_bitstring(x, expected_output):
+    assert is_bitstring(val=x) == expected_output
 
 
-@pytest.fixture
-def three_bit_rev_cp() -> List[int]:
-    return bit_rev_cp(list(range(8)))
+BIT_REV_CASES = [
+    (2, 0, 0),
+    (2, 1, 2),
+    (2, 2, 1),
+    (2, 3, 3),
+    (3, 0, 0),
+    (3, 1, 4),
+    (3, 2, 2),
+    (3, 3, 6),
+    (3, 4, 1),
+    (3, 5, 5),
+    (3, 6, 3),
+    (3, 7, 7),
+    (4, 0, 0),
+    (4, 1, 8),
+    (4, 2, 4),
+    (4, 3, 12),
+    (4, 4, 2),
+    (4, 5, 10),
+    (4, 6, 6),
+    (4, 7, 14),
+    (4, 8, 1),
+    (4, 9, 9),
+    (4, 10, 5),
+    (4, 11, 13),
+    (4, 12, 3),
+    (4, 13, 11),
+    (4, 14, 7),
+    (4, 15, 15),
+]
+
+@pytest.mark.parametrize("n,val,expected_output", BIT_REV_CASES)
+def test_bit_rev(n, val, expected_output):
+    assert bit_rev(num_bits=n, val=val) == expected_output
 
 
-# @pytest.mark.skip
-def test_bit_rev_cp(three_bit_rev_cp, expected_three_bit_rev):
-    assert three_bit_rev_cp == expected_three_bit_rev
+BIT_REV_CP_CASES = [
+    ([0, 1], [0, 1]),
+    ([0, 1, 2, 3], [0, 2, 1, 3]),
+    ([0, 1, 2, 3, 4, 5, 6, 7], [0, 4, 2, 6, 1, 5, 3, 7]),
+    ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], [0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15])
+]
+
+@pytest.mark.parametrize("x,expected_output", BIT_REV_CP_CASES)
+def test_bit_rev_cp(x, expected_output):
+    assert bit_rev_cp(x) == expected_output
 
 
-@pytest.fixture
-def make_some_centralized_integers() -> List[Tuple[int, int]]:
-    return [(i, cent(q=small_q_for_testing, halfmod=small_halfmod_for_testing, logmod=small_logmod_for_testing, val=i))
-            for i in range(small_q_for_testing)]
+CENT_CASES = [
+    (17, 8, 5, 0, 0),  # (q: int, halfmod: int, logmod: int, val: int)
+    (17, 8, 5, 1, 1),
+    (17, 8, 5, 2, 2),
+    (17, 8, 5, 3, 3),
+    (17, 8, 5, 4, 4),
+    (17, 8, 5, 5, 5),
+    (17, 8, 5, 6, 6),
+    (17, 8, 5, 7, 7),
+    (17, 8, 5, 8, 8),
+    (17, 8, 5, 9, -8),
+    (17, 8, 5, 10, -7),
+    (17, 8, 5, 11, -6),
+    (17, 8, 5, 12, -5),
+    (17, 8, 5, 13, -4),
+    (17, 8, 5, 14, -3),
+    (17, 8, 5, 15, -2),
+    (17, 8, 5, 16, -1),
+]
+
+@pytest.mark.parametrize("q,halfmod,logmod,val,expected_output", CENT_CASES)
+def test_cent(q, halfmod, logmod, val, expected_output):
+    assert cent(q=q, halfmod=halfmod, logmod=logmod, val=val) == expected_output
 
 
-@pytest.fixture
-def expected_centralized_integers() -> List[Tuple[int, int]]:
-    return [(0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7), (8, 8), (9, -8), (10, -7), (11, -6),
-            (12, -5), (13, -4), (14, -3), (15, -2), (16, -1)]
+ZETAS_AND_INVS_CASES = [
+    (17, 8, 8, 5, 16, 4, ([-1, -4, -8, 3], [-1, 4, 2, 6])), # (q, d, halfmod, logmod, n, lgn, expected_output)
+]
 
 
-# @pytest.mark.skip
-def test_cent(make_some_centralized_integers, expected_centralized_integers):
-    assert make_some_centralized_integers == expected_centralized_integers
+@pytest.mark.parametrize("q,d,halfmod,logmod,n,lgn,expected_output", ZETAS_AND_INVS_CASES)
+def test_make_zetas_and_invs(q, d, halfmod, logmod, n, lgn, expected_output):
+    assert make_zetas_and_invs(q=q, d=d, halfmod=halfmod, logmod=logmod, n=n, lgn=lgn) == expected_output
+
+# We only test the NTT and INTT of constant polynomials here; more thorough tests are advisable
+NTT_CASES = [
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [1] + [0] * 15, [1] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [2] + [0] * 15, [2] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [3] + [0] * 15, [3] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [4] + [0] * 15, [4] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [5] + [0] * 15, [5] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [6] + [0] * 15, [6] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [7] + [0] * 15, [7] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [8] + [0] * 15, [8] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-8] + [0] * 15, [-8] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-7] + [0] * 15, [-7] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-6] + [0] * 15, [-6] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-5] + [0] * 15, [-5] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-4] + [0] * 15, [-4] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-3] + [0] * 15, [-3] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-2] + [0] * 15, [-2] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-1] + [0] * 15, [-1] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [1] * 16, [1] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [2] * 16, [2] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [3] * 16, [3] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [4] * 16, [4] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [5] * 16, [5] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [6] * 16, [6] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [7] * 16, [7] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [8] * 16, [8] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-8] * 16, [-8] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-7] * 16, [-7] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-6] * 16, [-6] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-5] * 16, [-5] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-4] * 16, [-4] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-3] * 16, [-3] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-2] * 16, [-2] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-1] * 16, [-1] + [0] * 15),
+    # (q, zetas, zetas_inv, inv_flag, bool, halfmod, logmod, n, lgn, val, expected_output)
+    # (17, 8, 8, 5, 16, 4, ([-1, -4, -8, 3], [-1, 4, 2, 6])), # (q, d, halfmod, logmod, n, lgn, expected_output)
+]
+
+@pytest.mark.parametrize("q,zetas,zetas_inv,inv_flag,halfmod,logmod,n,lgn,val,expected_output", NTT_CASES)
+def test_ntt(q, zetas, zetas_inv, inv_flag, halfmod, logmod, n, lgn, val, expected_output):
+    result = ntt(q=q, zetas=zetas, zetas_inv=zetas_inv, inv_flag=inv_flag, halfmod=halfmod, logmod=logmod, n=n, lgn=lgn, val=val)
+    assert ntt(q=q, zetas=zetas, zetas_inv=zetas_inv, inv_flag=inv_flag, halfmod=halfmod, logmod=logmod, n=n, lgn=lgn, val=val) == expected_output
 
 
-@pytest.fixture
-def some_small_zetas_and_invs() -> Tuple[List[int], List[int]]:
-    return make_zetas_and_invs(
-        q=small_q_for_testing,
-        d=small_d_for_testing,
-        halfmod=small_halfmod_for_testing,
-        logmod=small_logmod_for_testing,
-        n=small_n_for_testing,
-        lgn=small_lgn_for_testing
-    )
-
-
-@pytest.fixture
-def expected_small_zetas_and_invs() -> Tuple[List[int], List[int]]:
-    return [-1, -4, -8, 3], [-1, 4, 2, 6]
-
-
-# @pytest.mark.skip
-def test_make_zetas_and_invs(some_small_zetas_and_invs, expected_small_zetas_and_invs):
-    assert some_small_zetas_and_invs == expected_small_zetas_and_invs
-
-
-@pytest.fixture
-def zetas_and_invs_for_testing() -> Tuple[List[int], List[int]]:
-    return make_zetas_and_invs(
-        q=modulus_for_testing,
-        d=degree_for_testing,
-        halfmod=halfmod_for_testing,
-        logmod=logmod_for_testing,
-        n=n_for_testing,
-        lgn=lgn_for_testing
-    )
-
-
-@pytest.fixture
-def seven() -> List[int]:
-    return [7] + [0 for _ in range(n_for_testing - 1)]
-
-
-@pytest.fixture
-def seven_plus_x() -> List[int]:
-    return [7, 1] + [0 for _ in range(n_for_testing - 2)]
-
-
-@pytest.fixture
-def ntt_seven(seven, zetas_and_invs_for_testing) -> List[int]:
-    zetas, zeta_invs = zetas_and_invs_for_testing
-    return ntt(q=modulus_for_testing, zetas=zetas, zetas_inv=zeta_invs, inv_flag=False, halfmod=halfmod_for_testing,
-               logmod=logmod_for_testing, n=n_for_testing, lgn=lgn_for_testing, val=seven)
-
-
-@pytest.fixture
-def ntt_seven_plus_x(seven_plus_x, zetas_and_invs_for_testing) -> List[int]:
-    zetas, zeta_invs = zetas_and_invs_for_testing
-    return ntt(q=modulus_for_testing, zetas=zetas, zetas_inv=zeta_invs, inv_flag=False, halfmod=halfmod_for_testing,
-               logmod=logmod_for_testing, n=n_for_testing, lgn=lgn_for_testing, val=seven_plus_x)
-
-
-@pytest.fixture
-def expected_ntt_seven(seven) -> List[int]:
-    return [7 for _ in range(n_for_testing)]
-
-
-@pytest.fixture
-def expected_ntt_seven_plus_x(seven_plus_x, prim_rou_and_inv_for_testing) -> List[int]:
-    w, w_inv = prim_rou_and_inv_for_testing
-    return [cent(q=modulus_for_testing, halfmod=halfmod_for_testing, logmod=logmod_for_testing, val=7 + w ** i) for i in
-            range(n_for_testing)]
-
-
-@pytest.fixture
-def intt_of_ntt_seven(ntt_seven, zetas_and_invs_for_testing) -> List[int]:
-    zetas, zeta_invs = zetas_and_invs_for_testing
-    return ntt(q=modulus_for_testing, zetas=zetas, zetas_inv=zeta_invs, inv_flag=True, halfmod=halfmod_for_testing,
-               logmod=logmod_for_testing, n=n_for_testing, lgn=lgn_for_testing, val=ntt_seven)
-
-
-@pytest.fixture
-def intt_of_ntt_seven_plus_x(ntt_seven_plus_x, zetas_and_invs_for_testing) -> List[int]:
-    zetas, zeta_invs = zetas_and_invs_for_testing
-    return ntt(q=modulus_for_testing, zetas=zetas, zetas_inv=zeta_invs, inv_flag=True, halfmod=halfmod_for_testing,
-               logmod=logmod_for_testing, n=n_for_testing, lgn=lgn_for_testing, val=ntt_seven_plus_x)
-
-
-# @pytest.mark.skip
-def test_ntt(prim_rou_and_inv_for_testing, zetas_and_invs_for_testing, seven, seven_plus_x, ntt_seven,
-             expected_ntt_seven, intt_of_ntt_seven, intt_of_ntt_seven_plus_x):
-    assert ntt_seven == expected_ntt_seven
-    assert intt_of_ntt_seven == seven
-    assert intt_of_ntt_seven_plus_x == seven_plus_x
-
-
-# @pytest.mark.skip
-def test_binary_digest():
+def test_binary_digest(mocker):
     """
     TODO: Mock SHAKE256 for testing this. Write later.
     """
     pass
 
+DECODE2COEF_CASES = [
+    (1, 1, '0', -1),
+    (1, 1, '1', 1),
+    (1, 2, '000', -1),
+    (1, 2, '001', -2),
+    (1, 2, '010', -1),
+    (1, 2, '011', -2),
+    (1, 2, '100', 1),
+    (1, 2, '101', 2),
+    (1, 2, '110', 1),
+    (1, 2, '111', 2),
+] + [
+    (128, 3, '0' + bin(i)[2:].zfill(130), -1-(i % 3)) for i in range(2**10)
+] + [
+    (128, 3, '1' + bin(i)[2:].zfill(130), 1 + (i % 3)) for i in range(2**10)
+]
 
-# @pytest.mark.skip
-def test_decode2coef():
-    next_secpar: int = 1
-    next_bd: int = 1
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='0') == -1
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='1') == 1
-    next_bd = 2
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='000') == -1
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='001') == -2
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='010') == -1
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='011') == -2
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='100') == 1
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='101') == 2
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='110') == 1
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='111') == 2
-    next_secpar = 128
-    next_bd = 3
-    num_bits = ceil(log2(next_bd)) + 1 + next_secpar
-    negative_one: str = bin(0)[2:].zfill(num_bits)
-    assert -1 == decode2coef(secpar=next_secpar, bd=next_bd, val=negative_one)
-    negative_two: str = negative_one[:-1] + '1'
-    assert -2 == decode2coef(secpar=next_secpar, bd=next_bd, val=negative_two)
-    negative_three: str = negative_two[:-2] + '10'
-    assert -3 == decode2coef(secpar=next_secpar, bd=next_bd, val=negative_three)
-    another_negative_one: str = negative_three[:-1] + '1'
-    assert -1 == decode2coef(secpar=next_secpar, bd=next_bd, val=another_negative_one)
-    another_negative_two: str = another_negative_one[:-3] + '100'
-    assert -2 == decode2coef(secpar=next_secpar, bd=next_bd, val=another_negative_two)
-    another_negative_three: str = another_negative_two[:-1] + '1'
-    assert -3 == decode2coef(secpar=next_secpar, bd=next_bd, val=another_negative_three)
-    a_one: str = '1' + negative_one[1:]
-    assert 1 == decode2coef(secpar=next_secpar, bd=next_bd, val=a_one)
-    a_two: str = a_one[:-1] + '1'
-    assert 2 == decode2coef(secpar=next_secpar, bd=next_bd, val=a_two)
-    a_three: str = a_two[:-2] + '10'
-    assert 3 == decode2coef(secpar=next_secpar, bd=next_bd, val=a_three)
-    another_one: str = a_three[:-1] + '1'
-    assert 1 == decode2coef(secpar=next_secpar, bd=next_bd, val=another_one)
-    another_two: str = another_one[:-3] + '100'
-    assert 2 == decode2coef(secpar=next_secpar, bd=next_bd, val=another_two)
-    another_three: str = another_two[:-1] + '1'
-    assert 3 == decode2coef(secpar=next_secpar, bd=next_bd, val=another_three)
+@pytest.mark.parametrize("secpar, bd, val, expected_output", DECODE2COEF_CASES)
+def test_decode2coef(secpar, bd, val, expected_output):
+    assert decode2coef(secpar=secpar, bd=bd, val=val) == expected_output
 
 
-# @pytest.mark.skip
-def test_decode2coefs():
-    assert decode2coefs(secpar=1, bd=2, wt=2, val='110111') == [1, 2]
+DECODE2COEFS_CASES = [
+    (1, 2, 2, '110111', [1, 2])  # (secpar, bd, wt, val, expected_output)
+]
 
 
-# @pytest.mark.skip
-def test_decode2indices():
-    assert decode2indices(secpar=1, d=4, wt=2, val='00000') == [0, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='00001') == [0, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='00010') == [0, 3]
-    assert decode2indices(secpar=1, d=4, wt=2, val='00011') == [0, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='00100') == [0, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='00101') == [0, 3]
-    assert decode2indices(secpar=1, d=4, wt=2, val='00110') == [0, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='00111') == [0, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01000') == [1, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01001') == [1, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01010') == [1, 3]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01011') == [1, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01100') == [1, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01101') == [1, 3]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01110') == [1, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01111') == [1, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10000') == [2, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10001') == [2, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10010') == [2, 3]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10011') == [2, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10100') == [2, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10101') == [2, 3]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10110') == [2, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10111') == [2, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11000') == [3, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11001') == [3, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11010') == [3, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11011') == [3, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11100') == [3, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11101') == [3, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11110') == [3, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11111') == [3, 1]
+@pytest.mark.parametrize("secpar,bd,wt,val,expected_output", DECODE2COEFS_CASES)
+def test_decode2coefs(secpar, bd, wt, val, expected_output):
+    assert decode2coefs(secpar=secpar, bd=bd, wt=wt, val=val) == expected_output
 
 
-# @pytest.mark.skip
-def test_decode2polycoefs():
-    assert decode2polycoefs(secpar=1, d=4, bd=2, wt=2, val='11110110111') == {3: 1, 0: 2}
+DECODE2INDICES_CASES = [
+    (1, 4, 2, '00000', [0, 1]),
+    (1, 4, 2, '00001', [0, 2]),
+    (1, 4, 2, '00010', [0, 3]),
+    (1, 4, 2, '00011', [0, 1]),
+    (1, 4, 2, '00100', [0, 2]),
+    (1, 4, 2, '00101', [0, 3]),
+    (1, 4, 2, '00110', [0, 1]),
+    (1, 4, 2, '00111', [0, 2]),
+    (1, 4, 2, '01000', [1, 0]),
+    (1, 4, 2, '01001', [1, 2]),
+    (1, 4, 2, '01010', [1, 3]),
+    (1, 4, 2, '01011', [1, 0]),
+    (1, 4, 2, '01100', [1, 2]),
+    (1, 4, 2, '01101', [1, 3]),
+    (1, 4, 2, '01110', [1, 0]),
+    (1, 4, 2, '01111', [1, 2]),
+    (1, 4, 2, '10000', [2, 0]),
+    (1, 4, 2, '10001', [2, 1]),
+    (1, 4, 2, '10010', [2, 3]),
+    (1, 4, 2, '10011', [2, 0]),
+    (1, 4, 2, '10100', [2, 1]),
+    (1, 4, 2, '10101', [2, 3]),
+    (1, 4, 2, '10110', [2, 0]),
+    (1, 4, 2, '10111', [2, 1]),
+    (1, 4, 2, '11000', [3, 0]),
+    (1, 4, 2, '11001', [3, 1]),
+    (1, 4, 2, '11010', [3, 2]),
+    (1, 4, 2, '11011', [3, 0]),
+    (1, 4, 2, '11100', [3, 1]),
+    (1, 4, 2, '11101', [3, 2]),
+    (1, 4, 2, '11110', [3, 0]),
+    (1, 4, 2, '11111', [3, 1]),
+]
+
+@pytest.mark.parametrize("secpar,d,wt,val,expected_output", DECODE2INDICES_CASES)
+def test_decode2indices(secpar, d, wt, val, expected_output):
+    assert decode2indices(secpar=secpar, d=d, wt=wt, val=val) == expected_output
+
+
+DECODE2POLYCOEFS_CASES = [
+    (1, 4, 2, 2, '11110110111', {3: 1, 0: 2}),
+]
+
+
+@pytest.mark.parametrize("secpar,d,bd,wt,val,expected_output", DECODE2POLYCOEFS_CASES)
+def test_decode2polycoefs(secpar, d, bd, wt, val, expected_output):
+    assert decode2polycoefs(secpar=secpar, d=d, bd=bd, wt=wt, val=val) == expected_output
 
 
 @pytest.fixture

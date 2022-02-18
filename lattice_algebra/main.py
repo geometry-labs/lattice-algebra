@@ -63,6 +63,13 @@ def is_pow_two(val: int) -> bool:
     return val > 0 and not (val & (val - 1))
 
 
+def has_prim_rou(q: int, d: int) -> bool:
+    """
+    Test whether Z/qZ has a primitive 2d-th root of unity.
+    """
+    return q % (2*d) == 1
+
+
 def is_ntt_friendly_prime(q: int, d: int) -> bool:
     """
     Test whether input integer pair can be used to construct an NTT-friendly ring.
@@ -75,7 +82,7 @@ def is_ntt_friendly_prime(q: int, d: int) -> bool:
     :return: Indicate whether q is prime and q-1 == 0 mod 2d.
     :rtype: bool
     """
-    return is_prime(q) and is_pow_two(d) and q % (2 * d) == 1
+    return is_prime(q) and is_pow_two(d) and has_prim_rou(q=q, d=d)
 
 
 def is_prim_rou(q: int, d: int, val: int) -> bool:
