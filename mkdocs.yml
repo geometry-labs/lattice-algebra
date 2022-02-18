@@ -31,6 +31,11 @@ plugins:
 
 nav:
   - Index: index.md
+  - Introduction: introduction.md
+  - Cryptography: cryptography.md
+  - Under The Hood: under_the_hood.md
+  - Installation: installation.md
+  - Intended Usage: intended_usage.md
 
 markdown_extensions:
   - toc:
