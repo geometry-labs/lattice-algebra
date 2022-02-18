@@ -1,0 +1,6 @@
+
+# Introduction
+
+The math handled by this package is foundational for lattice algebra, with a variety of applications ranging from signature aggregation to zero-knowledge proofs. The module highly prioritizes developer experience for researchers and engineers, by allowing them to work with a few high level objects (e.g. polynomials, polynomial vectors) that contain built-in methods to abstractly handle the ways that they interact with each other. ** The goal is to lower the barrier for creating lattice cryptography primitives and applications by allowing the developers to focus on securely building the higher-level constructs without having to worry about implementing the underlying algebra as well. **
+
+The module is specifically designed for building cryptographic schemes in the Ring/Module/Ideal Short Integer Solution setting with secrets uniformly distributed with respect to the infinity-norm and one-norm; it can also be used to implement schemes in the Ring/Module/Ideal Learning With Errors setting. High level objects are efficiently implemented under the hood: to manipulate equations of polynomials, we carry out the computations with vectors and matrices, with optimized algebraic operations.
