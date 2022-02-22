@@ -5,17 +5,14 @@ Errors settings where secret/error vectors are a uniformly distributed from the 
 norm and constant weight.
 
 Todo
- 1. Write to-do
- 2. Pre-compute bit_rev for each n-bit x or use amortized reverse binary counter scheme from 17-1 in Rivest
-    et al's "Introduction to Algorithms" to save a _bit_ of time (we already cache so this will be minimally impactful)
- 3. Input n to bit_rev_cp instead of recomputing it every time.
- 4. Modify decode2coefs, decode2indices, decode2polycoefs to be more pythonic if possible
- 5. Add decode2polynomial and decode2polynomialvector and modify hash2bddpoly and hash2bddpolyvec to use them
- 6. Rename hash2bddpoly and hash2bddpolyvec to hash2poly and hash2polyvec, respectively
- 7. Modify hash2bddpoly and hash2bddpolyvec to input a flag describing the desired distribution of the output
- 8. Refactor LatticeParameters to input **data: Any so instantiating LatticeParameters, Polynomial, and PolynomialVector
+ 1. Input n to bit_rev_cp instead of recomputing it every time.
+ 2. Modify decode2coefs, decode2indices, decode2polycoefs to be more pythonic if possible
+ 3. Add decode2polynomial and decode2polynomialvector and modify hash2bddpoly and hash2bddpolyvec to use them
+ 4. Rename hash2bddpoly and hash2bddpolyvec to hash2poly and hash2polyvec, respectively
+ 5. Modify hash2bddpoly and hash2bddpolyvec to input a flag describing the desired distribution of the output
+ 6. Refactor LatticeParameters to input **data: Any so instantiating LatticeParameters, Polynomial, and PolynomialVector
     are all done with a similar style.
- 9. Rename coefficient_representation_and_norm_and_weight to coef_rep, modify to only output coef rep.
+ 7. Rename coefficient_representation_and_norm_and_weight to coef_rep, modify to only output coef rep.
 
 Documentation
 -------------
@@ -171,8 +168,10 @@ def bit_rev(num_bits: int, val: int) -> int:
     :rtype: int
     """
     if (num_bits, val) not in touched_bit_rev:
-        x_in_bin: str = bin(val)[2:].zfill(num_bits)
-        touched_bit_rev[(num_bits, val)] = int(x_in_bin[::-1], 2)
+        for x in range(2**num_bits):
+            if (num_bits, x) not in touched_bit_rev:
+                x_in_bin: str = bin(x)[2:].zfill(num_bits)
+                touched_bit_rev[(num_bits, x)] = int(x_in_bin[::-1], 2)
     return touched_bit_rev[(num_bits, val)]
 
 
