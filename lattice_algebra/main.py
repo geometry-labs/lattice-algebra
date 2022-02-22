@@ -2,7 +2,20 @@
 The lattice_algebra module is an (unaudited) prototype containing basic algebraic infrastructure for employing lattice-
 based crypto schemes in the Ring (aka Module or Ideal) Short Integer Solution and Ring (Module, Ideal) Learning With
 Errors settings where secret/error vectors are a uniformly distributed from the subset of vectors with bounded infinity
-norm and constant weight. 
+norm and constant weight.
+
+Todo
+ 1. Write to-do
+ 2. Pre-compute bit_rev for each n-bit x or use amortized reverse binary counter scheme from 17-1 in Rivest
+    et al's "Introduction to Algorithms" to save a _bit_ of time (we already cache so this will be minimally impactful)
+ 3. Input n to bit_rev_cp instead of recomputing it every time.
+ 4. Modify decode2coefs, decode2indices, decode2polycoefs to be more pythonic if possible
+ 5. Add decode2polynomial and decode2polynomialvector and modify hash2bddpoly and hash2bddpolyvec to use them
+ 6. Rename hash2bddpoly and hash2bddpolyvec to hash2poly and hash2polyvec, respectively
+ 7. Modify hash2bddpoly and hash2bddpolyvec to input a flag describing the desired distribution of the output
+ 8. Refactor LatticeParameters to input **data: Any so instantiating LatticeParameters, Polynomial, and PolynomialVector
+    are all done with a similar style.
+ 9. Rename coefficient_representation_and_norm_and_weight to coef_rep, modify to only output coef rep.
 
 Documentation
 -------------
@@ -103,7 +116,7 @@ def is_prim_rou(q: int, d: int, val: int) -> bool:
     return all(val ** k % q != 1 for k in range(1, 2 * d)) and val ** (2 * d) % q == 1
 
 
-def get_prim_rou_and_rou_inv(q: int, d: int) -> Tuple[int, int]:
+def get_prim_rou_and_rou_inv(q: int, d: int) -> None | Tuple[int, int]:
     """
     Compute a primitive 2d-th root of unity modulo q and its inverse. Raises a ValueError if (d, q) are not an ntt-
     friendly pair. Works by finding the first (in natural number order) primitive root of unity and its inverse.
@@ -118,6 +131,7 @@ def get_prim_rou_and_rou_inv(q: int, d: int) -> Tuple[int, int]:
     """
     if not (is_ntt_friendly_prime(q, d)):
         raise ValueError('Input q and d are not ntt-friendly prime and degree.')
+    # If we do not raise a ValuError, then there exists a primitive root of unity 2 <= x < q.
     x: int = 2
     while x < q:
         if is_prim_rou(q, d, x):
@@ -136,7 +150,9 @@ def is_bitstring(val: str) -> bool:
     :return: True if the input is a bitstring (i.e. contains only 0's and 1's) and False otherwise.
     :rtype: bool
     """
-    return ''.join(sorted(list(set(val)))) in '01'
+    if isinstance(val, str):
+        return ''.join(sorted(list(set(val)))) in '01'
+    return False
 
 
 touched_bit_rev: Dict[Tuple[int, int], int] = dict()
@@ -154,8 +170,6 @@ def bit_rev(num_bits: int, val: int) -> int:
     :return: Output the bit-reversed value of x
     :rtype: int
     """
-    # TODO: pre-compute bit_reverse for each n-bit x or use amortized reverse binary counter scheme from 17-1 in Rivest
-    #  et al's "Introduction to Algorithms"
     if (num_bits, val) not in touched_bit_rev:
         x_in_bin: str = bin(val)[2:].zfill(num_bits)
         touched_bit_rev[(num_bits, val)] = int(x_in_bin[::-1], 2)
@@ -166,7 +180,6 @@ def bit_rev_cp(val: List[int]) -> List[int]:
     """
     Permute the indices of the input list x to bit-reversed order. Note: does not compute the bit-reverse of the
     values in the input list, just shuffles the input list around.
-    TODO: Input n instead of recomputing it every time.
 
     :param val: Input values
     :type val: List[int]
@@ -226,7 +239,7 @@ def make_zetas_and_invs(q: int, d: int, halfmod: int, logmod: int, n: int, lgn: 
     powers: List[int] = [n // (2 ** (s + 1)) for s in range(lgn)]
     zeta, zeta_inv = get_prim_rou_and_rou_inv(q, d)
     left: List[int] = [cent(q=q, halfmod=halfmod, logmod=logmod, val=int(zeta ** i)) for i in powers]
-    right: List[int] = [cent(q, halfmod=halfmod, logmod=logmod, val=int(zeta_inv ** i)) for i in powers]
+    right: List[int] = [cent(q=q, halfmod=halfmod, logmod=logmod, val=int(zeta_inv ** i)) for i in powers]
     return left, right
 
 
@@ -353,8 +366,6 @@ def decode2coefs(secpar: int, bd: int, wt: int, val: str) -> List[int]:
     case, when the bound is 1 (see decode2coef for more info on that).
 
     If bd == 1, we need wt bits, and otherwise we need wt * (ceil(log2(bd)) + 1 + secpar) bits.
-
-    TODO: Can this be made more pythonic?
 
     :param secpar: Input security parameter
     :type secpar: int
@@ -512,8 +523,6 @@ class LatticeParameters(object):
     def __init__(self, pars: dict):
         """
         Create a new LatticeParameters object with input pars, compute the rou, rou_inv, zetas, and zetas_inv
-
-        TODO: should we replace input parameters with Any?
 
         :param pars: Input parameters
         :type pars: dict
@@ -761,8 +770,6 @@ class Polynomial(object):
     def __repr__(self) -> str:
         """
         Return a canonical string representation of the Polynomial; WARNING: calls get_coefs.
-
-        TODO: Refactor to use self.vals instead, to save computing the NTT for a string representation
 
         :return:
         :rtype: str

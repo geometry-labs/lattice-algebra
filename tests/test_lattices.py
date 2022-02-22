@@ -39,6 +39,7 @@ pars_for_testing: dict = {
     'halfmod': halfmod_for_testing, 'logmod': logmod_for_testing, 'n': n_for_testing,
     'lgn': lgn_for_testing
 }
+lp_for_testing = LatticeParameters(pars=pars_for_testing)
 
 IS_PRIME_CASES = [
     (17, True),
@@ -145,6 +146,17 @@ def test_get_prim_rou_and_rou_inv_value_errors():
 GET_PRIM_ROU_AND_ROU_INV_CASES = [
     (257, 64, (9, 200)),
     (8380417, 256, (1753, 731434)),
+    (12289, 2, (1479, 10810)),
+    (12289, 4, (4043, 5146)),
+    (12289, 8, (722, 6553)),
+    (12289, 16, (1212, 2545)),
+    (12289, 32, (563, 5828)),
+    (12289, 64, (81, 11227)),
+    (12289, 128, (9, 2731)),
+    (12289, 256, (3, 8193)),
+    (12289, 512, (49, 1254)),
+    (12289, 1024, (7, 8778)),
+    (12289, 2048, (41, 4496)),
 ]
 
 
@@ -253,6 +265,19 @@ ZETAS_AND_INVS_CASES = [
 def test_make_zetas_and_invs(q, d, halfmod, logmod, n, lgn, expected_output):
     assert make_zetas_and_invs(q=q, d=d, halfmod=halfmod, logmod=logmod, n=n, lgn=lgn) == expected_output
 
+
+
+ZETAS_AND_INVS_AND_ROUS_AND_ROU_INVS_CASES = [
+    (17, 8, 8, 5, 16, 4, 3, 6, ([-1, -4, -8, 3], [-1, 4, 2, 6])),  # (q, d, halfmod, logmod, n, lgn, expected_output)
+    (17, 8, 8, 5, 16, 4, 1, 1, ([1, 1, 1, 1], [1, 1, 1, 1])),
+    (17, 8, 8, 5, 16, 4, 1, 2, ([1, 1, 1, 1], [1, -1, 4, 2])),
+    (17, 8, 8, 5, 16, 4, 1, 3, ([1, 1, 1, 1], [-1, -4, -8, 3])),
+]
+@pytest.mark.parametrize("q,d,halfmod,logmod,n,lgn,rou,rou_inv,expected_output", ZETAS_AND_INVS_AND_ROUS_AND_ROU_INVS_CASES)
+def test_make_zetas_and_invs_and_rous_and_rou_invs(mocker, q, d, halfmod, logmod, n, lgn, rou, rou_inv, expected_output):
+    mocker.patch('lattice_algebra.main.get_prim_rou_and_rou_inv', return_value=(rou, rou_inv))
+    assert make_zetas_and_invs(q=q, d=d, halfmod=halfmod, logmod=logmod, n=n, lgn=lgn) == expected_output  # the actual input doesn't matter
+
 # We only test the NTT and INTT of constant polynomials here; more thorough tests are advisable
 NTT_CASES = [
     (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [1] + [0] * 15, [1] * 16),
@@ -320,18 +345,24 @@ DECODE2COEF_CASES = [
     (128, 3, '1' + bin(i)[2:].zfill(130), 1 + (i % 3)) for i in range(2**10)
 ]
 
+
 @pytest.mark.parametrize("secpar, bd, val, expected_output", DECODE2COEF_CASES)
 def test_decode2coef(secpar, bd, val, expected_output):
     assert decode2coef(secpar=secpar, bd=bd, val=val) == expected_output
 
 
 DECODE2COEFS_CASES = [
-    (1, 2, 2, '110111', [1, 2])  # (secpar, bd, wt, val, expected_output)
+    (1, 2, 2, '110111', 1, [1, 1]),  # (secpar, bd, wt, val, expected_output)
+    (1, 2, 2, '110111', 2, [2, 2]),
+    (1, 2, 2, '110111', 3, [3, 3]),
+    (1, 2, 2, '110111', 4, [4, 4]),
+    (1, 2, 2, '110111', 'hello world', ['hello world', 'hello world'])
 ]
 
 
-@pytest.mark.parametrize("secpar,bd,wt,val,expected_output", DECODE2COEFS_CASES)
-def test_decode2coefs(secpar, bd, wt, val, expected_output):
+@pytest.mark.parametrize("secpar,bd,wt,val,decoded_coef,expected_output", DECODE2COEFS_CASES)
+def test_decode2coefs(mocker, secpar, bd, wt, val, decoded_coef, expected_output):
+    mocker.patch('lattice_algebra.main.decode2coef', return_value=decoded_coef)
     assert decode2coefs(secpar=secpar, bd=bd, wt=wt, val=val) == expected_output
 
 
@@ -376,119 +407,39 @@ def test_decode2indices(secpar, d, wt, val, expected_output):
 
 
 DECODE2POLYCOEFS_CASES = [
-    (1, 4, 2, 2, '11110110111', {3: 1, 0: 2}),
+    (1, 4, 2, 2, '11110110111', [3, 0], [1, 2], {3: 1, 0: 2}),
+    (1, 4, 2, 2, '11110110111', [3, 0], [5, 6], {3: 5, 0: 6}),
+    (1, 4, 2, 2, '11110110111', [18, 'hullaballoo'], [3.14159, 2+6j], {18: 3.14159, 'hullaballoo': 2+6j}),
 ]
 
 
-@pytest.mark.parametrize("secpar,d,bd,wt,val,expected_output", DECODE2POLYCOEFS_CASES)
-def test_decode2polycoefs(secpar, d, bd, wt, val, expected_output):
+@pytest.mark.parametrize("secpar,d,bd,wt,val,decoded_idxs,decoded_coefs,expected_output", DECODE2POLYCOEFS_CASES)
+def test_decode2polycoefs(mocker, secpar, d, bd, wt, val, decoded_idxs, decoded_coefs, expected_output):
+    mocker.patch("lattice_algebra.main.decode2indices", return_value=decoded_idxs)
+    mocker.patch("lattice_algebra.main.decode2coefs", return_value=decoded_coefs)
     assert decode2polycoefs(secpar=secpar, d=d, bd=bd, wt=wt, val=val) == expected_output
 
 
-@pytest.fixture
-def lp_for_testing() -> LatticeParameters:
-    return LatticeParameters(pars=pars_for_testing)
+GET_GEN_BITS_PER_POLY_CASES = [
+    (1, lp_for_testing, 1, 1, ceil(
+        (ceil(log2(lp_for_testing.degree)) + 1 + ceil(log2(1)) + 1) / 8.0)),
+    (1, lp_for_testing, 2, 2, ceil(
+        (ceil(log2(lp_for_testing.degree)) + (log2(lp_for_testing.degree) + 1) + 1 + ceil(log2(1)) + 1) / 8.0))
+]
 
 
-# @pytest.mark.skip
-def test_lattice_parameters(prim_rou_and_inv_for_testing, zetas_and_invs_for_testing, lp_for_testing):
-    w, w_inv = prim_rou_and_inv_for_testing
-    zetas, zeta_invs = zetas_and_invs_for_testing
-    foo = 'foo'
-    bar = 0
-    baz = -1
-    assert LatticeParameters(pars=pars_for_testing) == lp_for_testing
-    assert lp_for_testing.degree == degree_for_testing
-    assert lp_for_testing.length == length_for_testing
-    assert lp_for_testing.modulus == modulus_for_testing
-    assert lp_for_testing.rou == w
-    assert lp_for_testing.rou_inv == w_inv
-    assert lp_for_testing.zetas == zetas
-    assert lp_for_testing.zetas_invs == zeta_invs
-
-    bad_pars_for_testing: dict = deepcopy(pars_for_testing)
-    # Test failure of non-integer degree
-    bad_pars_for_testing['degree'] = foo
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # Test failure of zero degree
-    bad_pars_for_testing['degree'] = bar
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # Test failure of negative degree
-    bad_pars_for_testing['degree'] = baz
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # reset
-    bad_pars_for_testing['degree'] = degree_for_testing
-
-    # Test failure of non-integer length
-    bad_pars_for_testing['length'] = foo
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # Test failure of zero length
-    bad_pars_for_testing['length'] = bar
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # Test failure of negative length
-    bad_pars_for_testing['length'] = baz
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # reset
-    bad_pars_for_testing['length'] = length_for_testing
-
-    # Test failure of non-integer modulus
-    bad_pars_for_testing['modulus'] = foo
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # Test failure of zero modulus
-    bad_pars_for_testing['modulus'] = bar
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # Test failure of negative modulus
-    bad_pars_for_testing['modulus'] = baz
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # Test failure of unit modulus
-    bad_pars_for_testing['modulus'] = -baz
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-
-# @pytest.mark.skip
-def test_lattice_repr(lp_for_testing):
-    assert str(lp_for_testing) == str((degree_for_testing, length_for_testing, modulus_for_testing))
-
-
-# @pytest.mark.skip
-def test_lattice_eq(lp_for_testing):
-    assert LatticeParameters(pars=pars_for_testing) == lp_for_testing
-
-
-# @pytest.mark.skip
-def test_get_gen_bits_per_poly(lp_for_testing):
-    assert get_gen_bits_per_poly(secpar=1, lp=lp_for_testing, wt=1, bd=1) == ceil(
-        (ceil(log2(lp_for_testing.degree)) + 1 + ceil(log2(1)) + 1) / 8.0)
-    assert get_gen_bits_per_poly(secpar=1, lp=lp_for_testing, wt=2, bd=2) == ceil(
-        (ceil(log2(lp_for_testing.degree)) + (log2(lp_for_testing.degree) + 1) + 1 + ceil(log2(1)) + 1) / 8.0)
+@pytest.mark.parametrize("secpar,lp,wt,bd,expected_output", GET_GEN_BITS_PER_POLY_CASES)
+def test_get_gen_bits_per_poly(secpar, lp, wt, bd, expected_output):
+    assert get_gen_bits_per_poly(secpar=secpar,lp=lp,wt=wt,bd=bd) == expected_output
 
 
 @pytest.fixture
-def one(lp_for_testing) -> Polynomial:
+def one() -> Polynomial:
     return Polynomial(pars=lp_for_testing, coefs={0: 1})
 
 
 @pytest.fixture
-def some_ran_lin_polys(lp_for_testing) -> List[Tuple[int, int, Polynomial]]:
+def some_ran_lin_polys() -> List[Tuple[int, int, Polynomial]]:
     result = []
     for i in range(2 * sample_size_for_random_tests):
         a = (2 * randbits(1) - 1) * (randbelow(lp_for_testing.halfmod) + 1)
@@ -498,10 +449,8 @@ def some_ran_lin_polys(lp_for_testing) -> List[Tuple[int, int, Polynomial]]:
 
 
 # @pytest.mark.skip
-def test_polynomial_init(prim_rou_and_inv_for_testing, lp_for_testing, one, some_ran_lin_polys):
+def test_polynomial_init(one, some_ran_lin_polys):
     lp: LatticeParameters = lp_for_testing
-    w, w_inv = lp.rou, lp.rou_inv
-    assert w, w_inv == prim_rou_and_inv_for_testing
 
     # First, let's mess with the identity polynomial
     assert one.ntt_representation == [1 for _ in range(n_for_testing)]
@@ -513,12 +462,12 @@ def test_polynomial_init(prim_rou_and_inv_for_testing, lp_for_testing, one, some
         assert -lp.halfmod <= b <= lp.halfmod
         assert isinstance(f, Polynomial)
         assert f.ntt_representation == [
-            cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=a + b * w ** k) for k in range(lp.n)
+            cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=a + b * lp.rou ** k) for k in range(lp.n)
         ]
 
 
 # @pytest.mark.skip
-def test_polynomial_eq(lp_for_testing, one, some_ran_lin_polys):
+def test_polynomial_eq(one, some_ran_lin_polys):
     lp: LatticeParameters = lp_for_testing
 
     # First, let's make two identity polynomials and check they are equal.
@@ -541,7 +490,7 @@ def test_polynomial_eq(lp_for_testing, one, some_ran_lin_polys):
 
 
 @pytest.fixture
-def two(lp_for_testing) -> Polynomial:
+def two() -> Polynomial:
     return Polynomial(pars=lp_for_testing, coefs={0: 2})
 
 
@@ -554,10 +503,7 @@ def pairs_ran_lin_poly(some_ran_lin_polys) -> List[Tuple[Tuple[int, int, Polynom
 
 
 @pytest.fixture
-def pairs_of_random_polys_and_their_sums(
-        lp_for_testing,
-        pairs_ran_lin_poly
-) -> List[
+def pairs_of_random_polys_and_their_sums(pairs_ran_lin_poly) -> List[
     Tuple[
         Tuple[int, int, Polynomial],
         Tuple[int, int, Polynomial],
@@ -598,7 +544,7 @@ def pairs_of_random_polys_and_their_sums(
 
 
 # @pytest.mark.skip
-def test_polynomial_add(lp_for_testing, one, two, pairs_of_random_polys_and_their_sums):
+def test_polynomial_add(one, two, pairs_of_random_polys_and_their_sums):
     lp = lp_for_testing
     # First, let's make an identity polynomials and add it to itself
     assert one + one == two
@@ -621,7 +567,7 @@ def test_polynomial_add(lp_for_testing, one, two, pairs_of_random_polys_and_thei
 
 
 @pytest.fixture
-def pairs_of_random_polys_and_their_diffs(lp_for_testing, pairs_ran_lin_poly) -> \
+def pairs_of_random_polys_and_their_diffs(pairs_ran_lin_poly) -> \
         List[
             Tuple[
                 Tuple[int, int, Polynomial],
@@ -663,7 +609,7 @@ def pairs_of_random_polys_and_their_diffs(lp_for_testing, pairs_ran_lin_poly) ->
 
 
 # @pytest.mark.skip
-def test_polynomial_sub(lp_for_testing, pairs_of_random_polys_and_their_diffs):
+def test_polynomial_sub(pairs_of_random_polys_and_their_diffs):
     lp: LatticeParameters = lp_for_testing
     # Now let's do some addition with some random linear polynomials (AND the unity)
     for next_item in pairs_of_random_polys_and_their_diffs:
@@ -683,7 +629,7 @@ def test_polynomial_sub(lp_for_testing, pairs_of_random_polys_and_their_diffs):
 
 
 @pytest.fixture
-def pairs_of_random_polys_and_their_products(lp_for_testing, pairs_ran_lin_poly) -> \
+def pairs_of_random_polys_and_their_products(pairs_ran_lin_poly) -> \
         List[
             Tuple[
                 Tuple[int, int, Polynomial],
@@ -733,7 +679,7 @@ def pairs_of_random_polys_and_their_products(lp_for_testing, pairs_ran_lin_poly)
 
 
 # @pytest.mark.skip
-def test_polynomial_mul_small(lp_for_testing, one, pairs_of_random_polys_and_their_products):
+def test_polynomial_mul_small(one, pairs_of_random_polys_and_their_products):
     lp = lp_for_testing
     # First, let's make an identity polynomials and add it to itself
     assert one * one == one
@@ -781,7 +727,7 @@ def test_polynomial_repr(some_ran_lin_polys):
 
 
 # @pytest.mark.skip
-def test_polynomial_reset_vals(lp_for_testing, one):
+def test_polynomial_reset_vals(one):
     x = deepcopy(one)
     x._reset_vals(coefs={0: 2})
     assert x.ntt_representation == [2 for _ in range(lp_for_testing.n)]
@@ -790,7 +736,7 @@ def test_polynomial_reset_vals(lp_for_testing, one):
 
 
 # @pytest.mark.skip
-def test_polynomial_get_coefs(lp_for_testing, one):
+def test_polynomial_get_coefs(one):
     x = Polynomial(pars=lp_for_testing, coefs={1: 1})
     f = one + x
     assert f.coefficient_representation_and_norm_and_weight() == ({0: 1, 1: 1}, 1, 2)
@@ -811,7 +757,7 @@ def test_polynomial_norm_and_weight(some_ran_lin_polys):
 
 
 # @pytest.mark.skip
-def test_rand_poly(lp_for_testing):
+def test_rand_poly():
     f = randpoly(lp=lp_for_testing, bd=1, wt=2)
     assert isinstance(f, Polynomial)
     f_coefs, n, w = f.coefficient_representation_and_norm_and_weight()
@@ -821,13 +767,13 @@ def test_rand_poly(lp_for_testing):
 
 
 @pytest.fixture
-def some_random_polys_for_a_vector(lp_for_testing) -> List[Polynomial]:
+def some_random_polys_for_a_vector() -> List[Polynomial]:
     lp: LatticeParameters = lp_for_testing
     return [randpoly(lp=lp, bd=lp.halfmod // 2, wt=lp.degree // 2) for _ in range(lp.length)]
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_init(lp_for_testing, some_random_polys_for_a_vector):
+def test_polynomial_vector_init(some_random_polys_for_a_vector):
     lp: LatticeParameters = lp_for_testing
     assert PolynomialVector(pars=lp, entries=some_random_polys_for_a_vector)
     v = PolynomialVector(pars=lp, entries=some_random_polys_for_a_vector)
@@ -838,25 +784,25 @@ def test_polynomial_vector_init(lp_for_testing, some_random_polys_for_a_vector):
 
 
 @pytest.fixture
-def some_random_polyvec(lp_for_testing, some_random_polys_for_a_vector) -> PolynomialVector:
+def some_random_polyvec(some_random_polys_for_a_vector) -> PolynomialVector:
     return PolynomialVector(pars=lp_for_testing, entries=some_random_polys_for_a_vector)
 
 
 @pytest.fixture
-def some_random_polyvecs(lp_for_testing, some_random_polys_for_a_vector) -> List[PolynomialVector]:
+def some_random_polyvecs(some_random_polys_for_a_vector) -> List[PolynomialVector]:
     return [PolynomialVector(pars=lp_for_testing, entries=some_random_polys_for_a_vector) for _ in
             range(sample_size_for_random_tests)]
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_eq(lp_for_testing, some_random_polys_for_a_vector, some_random_polyvec):
+def test_polynomial_vector_eq(some_random_polys_for_a_vector, some_random_polyvec):
     lp: LatticeParameters = lp_for_testing
     v = PolynomialVector(pars=lp, entries=deepcopy(some_random_polys_for_a_vector))
     assert v == some_random_polyvec
 
 
 @pytest.fixture
-def some_ran_polyvec_pairs_sums(lp_for_testing) -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
+def some_ran_polyvec_pairs_sums() -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
     result = []
     while len(result) < sample_size_for_random_tests:
         f = randpolyvec(lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
@@ -867,7 +813,7 @@ def some_ran_polyvec_pairs_sums(lp_for_testing) -> List[Tuple[PolynomialVector, 
 
 
 @pytest.fixture
-def some_ran_polyvec_pairs_diffs(lp_for_testing) -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
+def some_ran_polyvec_pairs_diffs() -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
     result = []
     while len(result) < sample_size_for_random_tests:
         f = randpolyvec(lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
@@ -878,7 +824,7 @@ def some_ran_polyvec_pairs_diffs(lp_for_testing) -> List[Tuple[PolynomialVector,
 
 
 @pytest.fixture
-def some_ran_scaling(lp_for_testing) -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
+def some_ran_scaling() -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
     result = []
     while len(result) < sample_size_for_random_tests:
         f = randpoly(lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
@@ -889,7 +835,7 @@ def some_ran_scaling(lp_for_testing) -> List[Tuple[PolynomialVector, PolynomialV
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_add(lp_for_testing, some_ran_polyvec_pairs_sums):
+def test_polynomial_vector_add(some_ran_polyvec_pairs_sums):
     # TODO: Modify to exploit fixtures more effectively, this is spaghetti
     lp: LatticeParameters = lp_for_testing
     for next_item in some_ran_polyvec_pairs_sums:
@@ -939,7 +885,7 @@ def test_polynomial_vector_add(lp_for_testing, some_ran_polyvec_pairs_sums):
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_sub(lp_for_testing, some_ran_polyvec_pairs_diffs):
+def test_polynomial_vector_sub(some_ran_polyvec_pairs_diffs):
     lp: LatticeParameters = lp_for_testing
     for next_item in some_ran_polyvec_pairs_diffs:
         f, g, observed_h = next_item
@@ -976,7 +922,7 @@ def test_polynomial_vector_sub(lp_for_testing, some_ran_polyvec_pairs_diffs):
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_mul(lp_for_testing, one, some_random_polyvecs):
+def test_polynomial_vector_mul(one, some_random_polyvecs):
     # tests the dot product
     lp: LatticeParameters = lp_for_testing
     all_ones: PolynomialVector = PolynomialVector(pars=lp, entries=[deepcopy(one) for _ in range(lp.length)])
@@ -989,7 +935,7 @@ def test_polynomial_vector_mul(lp_for_testing, one, some_random_polyvecs):
 
 
 @pytest.fixture
-def some_random_linear_polyvecs(lp_for_testing) -> list:
+def some_random_linear_polyvecs() -> list:
     result = []
     while len(result) < sample_size_for_random_tests:
         next_result_entry = []
@@ -1042,7 +988,7 @@ def test_polynomial_vector_repr(some_random_linear_polyvecs, expected_polyvec_re
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_pow(lp_for_testing):
+def test_polynomial_vector_pow():
     lp: LatticeParameters = lp_for_testing
 
     for k in range(sample_size_for_random_tests):
@@ -1055,7 +1001,7 @@ def test_polynomial_vector_pow(lp_for_testing):
 
 
 # @pytest.mark.skip
-def test_polyvec_coefficient_representation_and_norm_and_weight(lp_for_testing):
+def test_polyvec_coefficient_representation_and_norm_and_weight():
     f: PolynomialVector = randpolyvec(lp=lp_for_testing, bd=7176, wt=384)
     assert isinstance(f, PolynomialVector)
     result = f.coefficient_representation_and_norm_and_weight()
@@ -1068,7 +1014,7 @@ def test_polyvec_coefficient_representation_and_norm_and_weight(lp_for_testing):
 
 
 # @pytest.mark.skip
-def test_randpolyvec(lp_for_testing):
+def test_randpolyvec():
     f: PolynomialVector = randpolyvec(lp=lp_for_testing, bd=7176, wt=384)
     assert isinstance(f, PolynomialVector)
     results = f.coefficient_representation_and_norm_and_weight()
