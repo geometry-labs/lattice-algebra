@@ -5,14 +5,12 @@ Errors settings where secret/error vectors are a uniformly distributed from the 
 norm and constant weight.
 
 Todo
- 1. Input n to bit_rev_cp instead of recomputing it every time.
- 2. Modify decode2coefs, decode2indices, decode2polycoefs to be more pythonic if possible
- 3. Add decode2polynomial and decode2polynomialvector and modify hash2bddpoly and hash2bddpolyvec to use them
- 4. Rename hash2bddpoly and hash2bddpolyvec to hash2poly and hash2polyvec, respectively
- 5. Modify hash2bddpoly and hash2bddpolyvec to input a flag describing the desired distribution of the output
- 6. Refactor LatticeParameters to input **data: Any so instantiating LatticeParameters, Polynomial, and PolynomialVector
+ 1. Modify decode2coefs, decode2indices, decode2polycoefs to be more pythonic if possible
+ 2. Modify decode2* functions to input a flag describing the desired distribution of the output, modify tests
+ 3. Refactor LatticeParameters to input **data: Any so instantiating LatticeParameters, Polynomial, and PolynomialVector
     are all done with a similar style.
- 7. Rename coefficient_representation_and_norm_and_weight to coef_rep, modify to only output coef rep.
+ 4. Rename coefficient_representation_and_norm_and_weight to coef_rep, modify to only output coef rep.
+ 5. Add to_bits and to_bytes to Polynomial and PolynomialVector, and test
 
 Documentation
 -------------
@@ -175,7 +173,7 @@ def bit_rev(num_bits: int, val: int) -> int:
     return touched_bit_rev[(num_bits, val)]
 
 
-def bit_rev_cp(val: List[int]) -> List[int]:
+def bit_rev_cp(val: List[int], n: int) -> List[int]:
     """
     Permute the indices of the input list x to bit-reversed order. Note: does not compute the bit-reverse of the
     values in the input list, just shuffles the input list around.
@@ -188,7 +186,6 @@ def bit_rev_cp(val: List[int]) -> List[int]:
     """
     if not is_pow_two(len(val)):
         raise ValueError("Can only bit-reverse-copy arrays with power-of-two lengths.")
-    n: int = ceil(log2(len(val)))
     return [val[bit_rev(n, i)] for i in range(len(val))]
 
 
@@ -273,7 +270,7 @@ def ntt(q: int, zetas: List[int], zetas_inv: List[int], inv_flag: bool, halfmod:
     """
     if sum(int(i) for i in bin(len(val))[2:]) != 1:
         raise ValueError("Can only NTT arrays with lengths that are powers of two.")
-    bit_rev_x: List[int] = bit_rev_cp(val)
+    bit_rev_x: List[int] = bit_rev_cp(val=val, n=ceil(log2(len(val))))
     m: int = 1
     for s in range(1, lgn + 1):
         m *= 2
@@ -457,7 +454,7 @@ def decode2polycoefs(secpar: int, d: int, bd: int, wt: int, val: str) -> Dict[in
     :return: Return a dict with integer keys and values, with wt distinct keys and all values in [-bd, ..., bd]
     :rtype: Dict[int, int]
     """
-    lgd: int = ceil(log2(d))
+    lgd: int = int(log2(d))
     lgbd: int = ceil(log2(bd))
     if (bd == 1 and len(val) < lgd + (wt - 1) * (lgd + secpar) + wt) or (
             bd > 1 and len(val) < lgd + (wt - 1) * (lgd + secpar) + wt * (1 + lgbd + secpar)):
@@ -579,7 +576,7 @@ class LatticeParameters(object):
         return str((self.degree, self.length, self.modulus))
 
 
-def get_gen_bits_per_poly(secpar: int, lp: LatticeParameters, wt: int, bd: int) -> int:
+def get_gen_bytes_per_poly(secpar: int, lp: LatticeParameters, wt: int, bd: int) -> int:
     """
     Compute bits required to decode a random bitstring to a polynomial of a certain weight and bound given some
     lattice parameters with a negligible bias away from uniformity. Note that this is not the same as the number of bits
@@ -589,7 +586,7 @@ def get_gen_bits_per_poly(secpar: int, lp: LatticeParameters, wt: int, bd: int) 
     Assumes a polynomial (which is a sum of monomials) is represented only by the coefficients and exponents of the non-
     zero summands. For example, to describe f(X) = 1 + 2 * X ** 7 + 5 * X ** 15, we can just store (0, 1), (7, 2), and
     (15, 5). If the polynomial has weight wt, then we store wt pairs. Each pair consists of an exponent from 0, 1, ...,
-    d-1, and each coefficient is an integer from [-((bd-1)//2, ..., (bd-1)//2]. In fact, to sample the first monomial
+    d-1, and each coefficient is an integer from [-(bd-1)//2, ..., (bd-1)//2]. In fact, to sample the first monomial
     exponent from [0, 1, ..., d - 1] with zero bias requires only ceil(log2(d)) bits, but sampling each subsequent
     monomial exponent requires an additional secpar bits. And, to sample the coefficient with negligible bias from
     uniform requires 1 + ceil(log2(bd)) + secpar bits.
@@ -606,9 +603,12 @@ def get_gen_bits_per_poly(secpar: int, lp: LatticeParameters, wt: int, bd: int) 
     :return: Bits required to decode to a polynomial without bias.
     :rtype: int
     """
-    outbytes_per_poly: int = ceil(log2(lp.degree))
-    outbytes_per_poly += (wt - 1) * (log2(lp.degree) + secpar) + wt * (1 + ceil(log2(bd)) + secpar)
-    return ceil(outbytes_per_poly / 8.0)
+    result = int(log2(lp.degree))
+    result += (wt - 1) * (int(log2(lp.degree)) + secpar)
+    result += wt
+    if bd > 1:
+        result += wt * (ceil(log2(bd)) + secpar)
+    return ceil(result/8)
 
 
 class Polynomial(object):
@@ -823,7 +823,43 @@ class Polynomial(object):
         return coefs_dict, norm, weight
 
 
-def randpoly(lp: LatticeParameters, bd: int = None, wt: int = None) -> Polynomial:
+def decode2poly(secpar: int, lp: LatticeParameters, bd: int, wt: int, val: str) -> Polynomial:
+    if not is_bitstring(val):
+        raise ValueError('')
+    return Polynomial(pars=lp, coefs=decode2polycoefs(secpar=secpar, d=lp.degree, bd=bd, wt=wt, val=val))
+
+
+def hash2_inf_wt_unif(secpar: int, lp: LatticeParameters, bd: int, wt: int, salt: str, m: str):
+    """
+    Hash an input message msg and salt to a polynomial with norm bound at most bd and weight at most wt.
+
+    :param secpar: Input security parameter
+    :type secpar: int
+    :param lp: Input lattice parameters
+    :type lp: LatticeParameters
+    :param bd: Input bound
+    :type bd: int
+    :param wt: Input weight
+    :type wt: int
+    :param m: Input string
+    :type m: str
+    :param salt: Input salt
+    :type salt: str
+    :return:
+    :rtype: Polynomial
+    """
+    num_bits_for_hashing: int = get_gen_bytes_per_poly(secpar=secpar, lp=lp, wt=wt, bd=bd)
+    new_binary_digest: str = binary_digest(m, num_bits_for_hashing, salt)
+    return decode2poly(secpar=secpar, lp=lp, bd=bd, wt=wt, val=new_binary_digest)
+
+
+def hash2polynomial(secpar: int, lp: LatticeParameters, bd: int, wt: int, salt: str, m: str, key: str) -> Polynomial:
+    if key == 'inf,wt,unif':
+        return hash2_inf_wt_unif(secpar=secpar, lp=lp, bd=bd, wt=wt, salt=salt, m=m)
+    raise ValueError('Uh oh spaghetti-ohs')
+
+
+def randpoly(secpar: int, lp: LatticeParameters, bd: int = None, wt: int = None, key: str = None) -> Polynomial:
     """
     Generate a random polynomial with norm bounded by bd and weight bounded by wt. Relies on randbelow and randbits
     from the secrets library to generate data. Since the secrets library is thought to be secure for cryptographic use,
@@ -838,18 +874,8 @@ def randpoly(lp: LatticeParameters, bd: int = None, wt: int = None) -> Polynomia
     :return:
     :rtype: Polynomial
     """
-    f_coefs: Dict[int, int] = dict()
-    n: int = max(1, min(bd, lp.modulus // 2))
-    w: int = max(1, min(wt, lp.degree))
-    while len(f_coefs) < w:
-        next_index: int = randbelow(lp.degree)
-        while next_index in f_coefs:
-            next_index = randbelow(lp.degree)
-        next_val: int = randbelow(n) + 1
-        next_val *= (2 * randbits(1) - 1)
-        f_coefs[next_index] = next_val
-
-    return Polynomial(pars=lp, coefs=f_coefs)
+    k: int = get_gen_bytes_per_poly(secpar=secpar, lp=lp, wt=wt, bd=bd) * 8
+    return decode2poly(secpar=secpar, lp=lp, bd=bd, wt=wt, val=bin(randbits(k))[2:].zfill(k))
 
 
 class PolynomialVector(object):
@@ -1001,7 +1027,19 @@ class PolynomialVector(object):
         return [val.coefficient_representation_and_norm_and_weight() for i, val in enumerate(self.entries)]
 
 
-def randpolyvec(lp: LatticeParameters, bd: int = None, wt: int = None) -> PolynomialVector:
+def decode2polyvec(secpar: int, lp: LatticeParameters, bd: int, wt: int, val: str) -> PolynomialVector:
+    if not is_bitstring(val):
+        raise ValueError('Must use bitstring')
+    k = get_gen_bytes_per_poly(secpar=secpar, lp=lp, bd=bd, wt=wt) * 8
+    if len(val) < k * lp.length:
+        raise ValueError('Input bitstring too short')
+    assert len(val) == lp.length * k
+    assert all(len(val[i*k: (i+1)*k]) == k for i in range(lp.length))
+    entries = [Polynomial(pars=lp, coefs=decode2polycoefs(secpar=secpar, d=lp.degree, bd=bd, wt=wt, val=val[i*k: (i+1)*k])) for i in range(lp.length)]
+    return PolynomialVector(pars=lp, entries=entries)
+
+
+def randpolyvec(secpar: int, lp: LatticeParameters, bd: int = None, wt: int = None) -> PolynomialVector:
     """
     Generate a random PolynomialVector with bounded Polynomial entries. Essentially just instantiates a
     PolynomialVector object with a list of random Polynomial objects as entries, which are in turn generated by randpoly
@@ -1019,35 +1057,11 @@ def randpolyvec(lp: LatticeParameters, bd: int = None, wt: int = None) -> Polyno
         raise ValueError('Cannot generate a random polynomial vector without a positive integer bound')
     elif wt is None or not isinstance(wt, int) or wt < 1:
         raise ValueError('Cannot generate a random polynomial vector without a positive integer weight')
-    return PolynomialVector(pars=lp, entries=[randpoly(lp=lp, bd=bd, wt=wt) for _ in range(lp.length)])
+    k = get_gen_bytes_per_poly(secpar=secpar, lp=lp, bd=bd, wt=wt) * lp.length * 8
+    return decode2polyvec(secpar=secpar, lp=lp, bd=bd, wt=wt, val=bin(randbits(k))[2:].zfill(k))
 
 
-def hash2bddpoly(secpar: int, lp: LatticeParameters, bd: int, wt: int, salt: str, m: str) -> Polynomial:
-    """
-    Hash an input message msg and salt to a polynomial with norm bound at most bd and weight at most wt.
-
-    :param secpar: Input security parameter
-    :type secpar: int
-    :param lp: Input lattice parameters
-    :type lp: LatticeParameters
-    :param bd: Input bound
-    :type bd: int
-    :param wt: Input weight
-    :type wt: int
-    :param m: Input string
-    :type m: str
-    :param salt: Input salt
-    :type salt: str
-    :return:
-    :rtype: Polynomial
-    """
-    num_bits_for_hashing: int = get_gen_bits_per_poly(secpar=secpar, lp=lp, wt=wt, bd=bd)
-    new_binary_digest: str = binary_digest(m, num_bits_for_hashing, salt)
-    coefs: Dict[int, int] = decode2polycoefs(secpar=secpar, d=lp.degree, bd=bd, wt=wt, val=new_binary_digest)
-    return Polynomial(pars=lp, coefs=coefs)
-
-
-def hash2bddpolyvec(
+def hash2polynomialvector(
         secpar: int, lp: LatticeParameters, bd: int, wt: int, salt: str, num_entries: int, m: str
 ) -> PolynomialVector:
     """
@@ -1072,10 +1086,11 @@ def hash2bddpolyvec(
     :rtype: PolynomialVector
     """
     # Note: this can't exploit hash_to_bounded_polynomial, which hashes the message independently.
-    num_bits: int = get_gen_bits_per_poly(secpar=secpar, lp=lp, wt=wt, bd=bd)
+    num_bits: int = get_gen_bytes_per_poly(secpar=secpar, lp=lp, wt=wt, bd=bd)
     total_bits: int = num_entries * num_bits
     x: str = binary_digest(m, total_bits, salt)
-    xs: List[str] = [x[i * 8 * num_bits: (i + 1) * 8 * num_bits] for i in range(num_entries)]
-    coefs: List[Dict[int, int]] = [decode2polycoefs(secpar, lp.degree, bd, wt, i) for i in xs]
-    entries: List[Polynomial] = [Polynomial(pars=lp, coefs=i) for i in coefs]
-    return PolynomialVector(pars=lp, entries=entries)
+    return decode2polyvec(secpar=secpar, lp=lp, bd=bd, wt=wt, val=x)
+    # xs: List[str] = [x[i * 8 * num_bits: (i + 1) * 8 * num_bits] for i in range(num_entries)]
+    # coefs: List[Dict[int, int]] = [decode2polycoefs(secpar, lp.degree, bd, wt, i) for i in xs]
+    # entries: List[Polynomial] = [Polynomial(pars=lp, coefs=i) for i in coefs]
+    # return PolynomialVector(pars=lp, entries=entries)

@@ -4,7 +4,7 @@ Cryptographic schemes that are secure against quantum adversaries are infamous f
 
 This is a three-part article series exploring avenues toward more efficient quantum-resistant transacting. Here in part one, we explore the technical end of _signature aggregation_ in lattice-based cryptographic settings. The second part of this series explores _payment channels_ and their implementations, especially with _adaptor signatures_. In the final part, we describe a blockchain-agnostic code-based approach to trustlessly (or, rather, _trust-minimally_) reducing local storage requirements for network participants while keeping bootstrapping costs low. Along the way, we present prototype python implementations of these ideas. 
 
-## Part One: The Pursuit of More Efficient Lattice-Based Signing
+## Part Two: The Whole Is Greater Than the Sum of Its Parts
 
 ### Extending Digital Signatures to Aggregatable Signatures
 

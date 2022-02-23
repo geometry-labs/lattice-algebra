@@ -40,6 +40,7 @@ pars_for_testing: dict = {
     'lgn': lgn_for_testing
 }
 lp_for_testing = LatticeParameters(pars=pars_for_testing)
+secpar_for_testing = 8
 
 IS_PRIME_CASES = [
     (17, True),
@@ -228,7 +229,7 @@ BIT_REV_CP_CASES = [
 
 @pytest.mark.parametrize("x,expected_output", BIT_REV_CP_CASES)
 def test_bit_rev_cp(x, expected_output):
-    assert bit_rev_cp(x) == expected_output
+    assert bit_rev_cp(x, ceil(log2(len(x)))) == expected_output
 
 
 CENT_CASES = [
@@ -430,7 +431,7 @@ GET_GEN_BITS_PER_POLY_CASES = [
 
 @pytest.mark.parametrize("secpar,lp,wt,bd,expected_output", GET_GEN_BITS_PER_POLY_CASES)
 def test_get_gen_bits_per_poly(secpar, lp, wt, bd, expected_output):
-    assert get_gen_bits_per_poly(secpar=secpar,lp=lp,wt=wt,bd=bd) == expected_output
+    assert get_gen_bytes_per_poly(secpar=secpar, lp=lp, wt=wt, bd=bd) == expected_output
 
 
 @pytest.fixture
@@ -758,7 +759,7 @@ def test_polynomial_norm_and_weight(some_ran_lin_polys):
 
 # @pytest.mark.skip
 def test_rand_poly():
-    f = randpoly(lp=lp_for_testing, bd=1, wt=2)
+    f = randpoly(secpar=secpar_for_testing, lp=lp_for_testing, bd=1, wt=2)
     assert isinstance(f, Polynomial)
     f_coefs, n, w = f.coefficient_representation_and_norm_and_weight()
     assert n <= 1 and w <= 2
@@ -769,7 +770,7 @@ def test_rand_poly():
 @pytest.fixture
 def some_random_polys_for_a_vector() -> List[Polynomial]:
     lp: LatticeParameters = lp_for_testing
-    return [randpoly(lp=lp, bd=lp.halfmod // 2, wt=lp.degree // 2) for _ in range(lp.length)]
+    return [randpoly(secpar=secpar_for_testing, lp=lp, bd=lp.halfmod // 2, wt=lp.degree // 2) for _ in range(lp.length)]
 
 
 # @pytest.mark.skip
@@ -779,8 +780,8 @@ def test_polynomial_vector_init(some_random_polys_for_a_vector):
     v = PolynomialVector(pars=lp, entries=some_random_polys_for_a_vector)
     tmp = v.coefficient_representation_and_norm_and_weight()
     assert max(i[1] for i in tmp) <= lp.halfmod // 2
-    assert max(i[2] for i in tmp) <= lp.degree // 2
-    assert randpolyvec(lp=lp, bd=norm_for_testing, wt=weight_for_testing)
+    assert max(i[2] for i in tmp) <= lp.degree
+    assert randpolyvec(secpar=secpar_for_testing, lp=lp, bd=norm_for_testing, wt=weight_for_testing)
 
 
 @pytest.fixture
@@ -805,8 +806,8 @@ def test_polynomial_vector_eq(some_random_polys_for_a_vector, some_random_polyve
 def some_ran_polyvec_pairs_sums() -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
     result = []
     while len(result) < sample_size_for_random_tests:
-        f = randpolyvec(lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
-        g = randpolyvec(lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
+        f = randpolyvec(secpar=secpar_for_testing, lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
+        g = randpolyvec(secpar=secpar_for_testing, lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
         h = f + g
         result += [(f, g, h)]
     return result
@@ -816,8 +817,8 @@ def some_ran_polyvec_pairs_sums() -> List[Tuple[PolynomialVector, PolynomialVect
 def some_ran_polyvec_pairs_diffs() -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
     result = []
     while len(result) < sample_size_for_random_tests:
-        f = randpolyvec(lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
-        g = randpolyvec(lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
+        f = randpolyvec(secpar=secpar_for_testing, lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
+        g = randpolyvec(secpar=secpar_for_testing, lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
         h = f - g
         result += [(f, g, h)]
     return result
@@ -827,8 +828,8 @@ def some_ran_polyvec_pairs_diffs() -> List[Tuple[PolynomialVector, PolynomialVec
 def some_ran_scaling() -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
     result = []
     while len(result) < sample_size_for_random_tests:
-        f = randpoly(lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
-        g = randpolyvec(lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
+        f = randpoly(secpar=secpar_for_testing, lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
+        g = randpolyvec(secpar=secpar_for_testing, lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
         h = g ** f
         result += [(f, g, h)]
     return result
@@ -992,8 +993,8 @@ def test_polynomial_vector_pow():
     lp: LatticeParameters = lp_for_testing
 
     for k in range(sample_size_for_random_tests):
-        v: Polynomial = randpoly(lp=lp, bd=17, wt=23)
-        u: PolynomialVector = randpolyvec(lp=lp, bd=7176, wt=384)
+        v: Polynomial = randpoly(secpar=secpar_for_testing, lp=lp, bd=17, wt=23)
+        u: PolynomialVector = randpolyvec(secpar=secpar_for_testing, lp=lp, bd=7176, wt=384)
         expected_scaled_vector: PolynomialVector = deepcopy(u)
         expected_scaled_vector.entries = [i * v for i in expected_scaled_vector.entries]
         observed_scaled_vector = u ** v
@@ -1002,7 +1003,7 @@ def test_polynomial_vector_pow():
 
 # @pytest.mark.skip
 def test_polyvec_coefficient_representation_and_norm_and_weight():
-    f: PolynomialVector = randpolyvec(lp=lp_for_testing, bd=7176, wt=384)
+    f: PolynomialVector = randpolyvec(secpar=secpar_for_testing, lp=lp_for_testing, bd=7176, wt=384)
     assert isinstance(f, PolynomialVector)
     result = f.coefficient_representation_and_norm_and_weight()
     for i in result:
@@ -1015,7 +1016,7 @@ def test_polyvec_coefficient_representation_and_norm_and_weight():
 
 # @pytest.mark.skip
 def test_randpolyvec():
-    f: PolynomialVector = randpolyvec(lp=lp_for_testing, bd=7176, wt=384)
+    f: PolynomialVector = randpolyvec(secpar=secpar_for_testing, lp=lp_for_testing, bd=7176, wt=384)
     assert isinstance(f, PolynomialVector)
     results = f.coefficient_representation_and_norm_and_weight()
     for i in results:
@@ -1029,7 +1030,7 @@ def test_randpolyvec():
 # @pytest.mark.skip
 def test_decode_bitstring_to_coefficient():
     # TODO: Unnecessarily thorough without keeping track of touched bounds, but doesn't test what is intended to be
-    #  tested by avoiding touched bounds this way... more clever test needed
+    #  tested by avoiding touched bounds this way... better test needed
     secpar = 8
     touched_bounds = dict()
     for bound in range(1, small_q_for_testing // 2):
