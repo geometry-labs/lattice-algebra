@@ -37,9 +37,9 @@ Polynomials support ```__add__```, ```__radd__```, ```__sub__```, ```__mul__```,
 
 Polynomials have a ```cooefficient_representation_and_norm_and_weight``` method, which inverts the ```ntt_representation``` list to obtain the coefficient representation of the polynomial, and returns this coefficient representation together with the infinity norm and the Hamming weight of the polynomial.
 
-The package uses ```__repr___``` to cast the output of ```coefficient_representation_and_norm_and_weight``` as a string.
+The package uses ```__repr___``` to cast the output of ```get_coef_rep``` as a string.
 
-_WARNING_: Computing the ```ntt_representation``` requires computing the NTT of the polynomial, and calling ```coefficient_representation_and_norm_and_weight``` requires computing the inverse NTT of the polynomial. These are relatively expensive operations compared to arithmetic. Hence, _creating polynomials_, _printing them to strings_, and _computing the norm and weight_ of polynomials should be done once, after all other computations are complete.
+_WARNING_: Computing the ```ntt_representation``` requires computing the NTT of the polynomial, and calling ```get_coef_rep``` requires computing the inverse NTT of the polynomial. These are relatively expensive operations compared to arithmetic. Hence, _creating polynomials_, _printing them to strings_, and _computing the norm and weight_ of polynomials should be done once, after all other computations are complete.
 
 ### PolynomialVector
 
