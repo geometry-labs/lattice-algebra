@@ -917,7 +917,7 @@ def some_random_polynomialvector_pairs_diffs() -> List[Tuple[PolynomialVector, P
 
 # @pytest.mark.skip
 def test_polynomial_vector_add(some_random_polynomialvector_pairs_sums):
-    # TODO: Modify to exploit fixtures more effectively, this is spaghetti
+    # TODO: Rewrite
     lp: LatticeParameters = lp_for_testing
     for next_item in some_random_polynomialvector_pairs_sums:
         f, g, observed_h = next_item
@@ -1123,8 +1123,7 @@ def test_random_polynomialvector():
 
 # @pytest.mark.skip
 def test_decode_bitstring_to_coefficient():
-    # TODO: Unnecessarily thorough without keeping track of touched bounds, but doesn't test what is intended to be
-    #  tested by avoiding touched bounds this way... better test needed
+    # TODO: Rewrite this
     dist_pars_tmp = deepcopy(small_dist_pars)
     for bound in range(1, lp_for_testing.modulus // 2, lp_for_testing.modulus // (2**5)):
         dist_pars_tmp['bd'] = bound
