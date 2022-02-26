@@ -411,7 +411,7 @@ class LatticeParameters(object):
         return str((self.degree, self.length, self.modulus))
 
 
-INFINITY_NORM_WEIGHT_AND_UNIFORM_DISTRIBUTION: str = 'inf,wt,unif'
+UNIFORM_INFINITY_WEIGHT: str = 'inf,wt,unif'
 
 
 def decode2coef_inf_unif(secpar: int, lp: LatticeParameters, val: str, bits_to_decode: int,
@@ -477,7 +477,7 @@ def decode2coef(secpar: int, lp: LatticeParameters, val: str, distribution: str,
         raise ValueError('Cannot decode2coef without a non-empty bitstring val.')
     elif not isinstance(distribution, str):
         raise ValueError('Cannot decode2coef without a string code indicating the distribution.')
-    elif distribution == INFINITY_NORM_WEIGHT_AND_UNIFORM_DISTRIBUTION:
+    elif distribution == UNIFORM_INFINITY_WEIGHT:
         return decode2coef_inf_unif(secpar=secpar, lp=lp, val=val, dist_pars=dist_pars, bits_to_decode=bits_to_decode)
     raise ValueError('Tried to decode2coef with a distribution that has not yet been implemented.')
 
@@ -702,7 +702,7 @@ def get_gen_bytes_per_poly(secpar: int, lp: LatticeParameters, distribution: str
             'Cannot decode2polycoefs without positive integer number of coefficients to generate and an ' +
             'integer number of indices to generate.'
         )
-    elif distribution == INFINITY_NORM_WEIGHT_AND_UNIFORM_DISTRIBUTION:
+    elif distribution == UNIFORM_INFINITY_WEIGHT:
         return get_gen_bytes_per_poly_inf_wt_unif(secpar=secpar, lp=lp, dist_pars=dist_pars, num_coefs=num_coefs)
     raise ValueError(
         'We tried to compute the number of bits required to generate a polynomial for a distribution ' +
@@ -1061,7 +1061,7 @@ class PolynomialVector(object):
         __mul__(self, other)
             Compute the dot product of two polynomial vectors.
         __pow__(self, other: Polynomial)
-            Multiply each entry in entries by other.
+            Scale self
         __repr__(self)
             String representation of the polynomial
         norm_and_weight()
@@ -1145,7 +1145,7 @@ class PolynomialVector(object):
         :param other: Other PolynomialVector
         :type other: PolynomialVector
 
-        :return: The dot product of self against other.
+        :return: The dot product
         :rtype: PolynomialVector
         """
         if self.lp != other.lp:
@@ -1239,11 +1239,11 @@ def random_polynomial_vector_inf_wt_unif(
             dist_pars['wt'] < 1 or dist_pars['wt'] > lp.degree:
         raise ValueError('Cannot random_polynomial_vector_inf_wt_unif without positive integer weight.')
     k = 8 * lp.length * get_gen_bytes_per_poly(
-        secpar=secpar, lp=lp, distribution=INFINITY_NORM_WEIGHT_AND_UNIFORM_DISTRIBUTION, dist_pars=dist_pars,
+        secpar=secpar, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=dist_pars,
         num_coefs=num_coefs, bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
     )
     return decode2polynomialvector(
-        secpar=secpar, lp=lp, distribution=INFINITY_NORM_WEIGHT_AND_UNIFORM_DISTRIBUTION, dist_pars=dist_pars,
+        secpar=secpar, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=dist_pars,
         num_coefs=num_coefs, bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode,
         val=bin(randbits(k))[2:].zfill(k)
     )
@@ -1277,7 +1277,7 @@ def random_polynomialvector(
     """
     if secpar < 1:
         raise ValueError('Cannot random_polynomialvector without an integer security parameter.')
-    elif distribution == INFINITY_NORM_WEIGHT_AND_UNIFORM_DISTRIBUTION:
+    elif distribution == UNIFORM_INFINITY_WEIGHT:
         return random_polynomial_vector_inf_wt_unif(
             secpar=secpar, lp=lp, dist_pars=dist_pars, num_coefs=num_coefs,
             bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
