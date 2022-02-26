@@ -79,14 +79,14 @@ print(f"Weight of linear combination = {w}")
 
 ## Randomness and Hashing
 
-The library also contains functions ```randpoly```, ```hash2bddpoly```, ```randpolyvec```, and ```hash2bddpolyvec``` for generating random ```Polynomial``` and ```PolynomialVector``` objects, either with system randomness or by hashing a message. The output of these functions are uniformly random (at least up to a negligible difference) among the ```Polynomial``` and ```PolynomialVector``` objects with a specified infinity norm bound and Hamming weight. Randomness is generated using the ```secrets``` module.
+The library also contains functions ```random_polynomial```, ```hash2bddpoly```, ```random_polynomialvector```, and ```hash2bddpolyvec``` for generating random ```Polynomial``` and ```PolynomialVector``` objects, either with system randomness or by hashing a message. The output of these functions are uniformly random (at least up to a negligible difference) among the ```Polynomial``` and ```PolynomialVector``` objects with a specified infinity norm bound and Hamming weight. Randomness is generated using the ```secrets``` module.
 
 ### Example of Randomness and Hashing.
 
-In the following code, we first use the salt ```'SOME_SALT'``` to hash the string ```hello world``` to an instance of the ```Polynomial``` class, say ```x```, and an instance of the ```PolynomialVector``` class, say ```v```. In both cases, the polynomials in the hash output should have at most ```4``` non-zero coefficients since ```wt = 4```, and all of those should be in the list ```[-1, 0, 1]``` since ```bd = 1```. Then, we sample a new random ```Polynomial```, say ```y```, and a new random ```PolynomialVector```, say ```u```, using ```randpoly``` and ```randpolyvec```, respectively. Note that there are around ```2 ** 12``` possible outputs of ```randpoly``` and ```hash2bddpoly``` using these parameters, and around ```2 ** 36``` possible outputs of ```randpolyvec``` and ```hash2bddpolyvec```. In particular, the chance that we obtain ```x == y``` and ```v == u``` under these conditions is around ```2 ** -48```. While this is not cryptographically small, it is pretty durned small, so the following code should pass assertions.  
+In the following code, we first use the salt ```'SOME_SALT'``` to hash the string ```hello world``` to an instance of the ```Polynomial``` class, say ```x```, and an instance of the ```PolynomialVector``` class, say ```v```. In both cases, the polynomials in the hash output should have at most ```4``` non-zero coefficients since ```wt = 4```, and all of those should be in the list ```[-1, 0, 1]``` since ```bd = 1```. Then, we sample a new random ```Polynomial```, say ```y```, and a new random ```PolynomialVector```, say ```u```, using ```random_polynomial``` and ```random_polynomialvector```, respectively. Note that there are around ```2 ** 12``` possible outputs of ```random_polynomial``` and ```hash2bddpoly``` using these parameters, and around ```2 ** 36``` possible outputs of ```random_polynomialvector``` and ```hash2bddpolyvec```. In particular, the chance that we obtain ```x == y``` and ```v == u``` under these conditions is around ```2 ** -48```. While this is not cryptographically small, it is pretty durned small, so the following code should pass assertions.  
 
 ```
-from lattice_algebra import hash2bddpoly, hash2bddpolyvec, randpoly, randpolyvec
+from lattice_algebra import hash2bddpoly, hash2bddpolyvec, random_polynomial, random_polynomialvector
 
 lp = LatticeParameters(pars={'degree': 8, 'modulus': 257, 'length': 3})  # make V
 
@@ -100,12 +100,12 @@ coef_rep, n, w = v.get_coef_rep()
 assert n <= 1  # should always pass
 assert len(coef_rep) <= w <= 4  # should always pass
 
-y = randpoly(secpar = lp.secpar, lp = lp, bd = 1, wt = 4)
+y = random_polynomial(secpar = lp.secpar, lp = lp, bd = 1, wt = 4)
 coef_rep, n, w = y.get_coef_rep()
 assert n <= 1  # should always pass
 assert len(coef_rep) <= w <= 4  # should always pass
 
-u = randpolyvec(secpar = lp.secpar, lp = lp, bd = 1, wt = 4)
+u = random_polynomialvector(secpar = lp.secpar, lp = lp, bd = 1, wt = 4)
 coef_rep, n, w = u.get_coef_rep()
 assert n <= 1  # should always pass
 sassert len(coef_rep) <= w <= 4  # should always pass
