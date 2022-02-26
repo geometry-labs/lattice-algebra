@@ -497,6 +497,7 @@ def test_get_gen_bits(secpar, lp, dist, dist_pars, num_coefs, bits_to_indices, b
     assert observed_output == expected_output
 
 
+# TODO: Modify the following tests to be properly parameterized, mocked, and fixtured
 @pytest.fixture
 def one() -> Polynomial:
     return Polynomial(lp=lp_for_testing, coefs={0: 1})
