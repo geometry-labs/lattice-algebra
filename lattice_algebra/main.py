@@ -6,6 +6,7 @@ norm and constant weight.
 
 Todo
  1. Modify decode2coefs, decode2indices, decode2polycoefs to be more pythonic if possible
+ 2. Add const_time attribute to Polynomials, add support for non-const-time arithmetic
 
 Documentation
 -------------
@@ -40,94 +41,94 @@ from hashlib import shake_256 as shake
 from typing import List, Dict, Tuple
 
 
-def is_prime(q: int) -> bool:
+def is_prime(val: int) -> bool:
     """
     Test whether input integer is prime with the Sieve of Eratosthenes.
-
-    :param q: Input value
-    :type q: int
-
-    :return: Indicate whether q is prime.
-    :rtype: bool
-    """
-    return all([q % i != 0 for i in range(2, ceil(sqrt(q)) + 1)])
-
-
-def is_pow_two(val: int) -> bool:
-    """
-    Test whether input integer is a power of two by summing the bits in its binary expansion and testing for 1.
 
     :param val: Input value
     :type val: int
 
-    :return: Indicate whether x is a power-of-two.
+    :return: Indicate whether q is prime.
+    :rtype: bool
+    """
+    return all([val % i != 0 for i in range(2, ceil(sqrt(val)) + 1)])
+
+
+def is_pow_two(val: int) -> bool:
+    """
+    Test if input integer is power of two by summing the bits in its binary expansion and testing for 1.
+
+    :param val: Input value
+    :type val: int
+
+    :return: Indicate whether x is a power-of-two_with_const_time.
     :rtype: bool
     """
     return val > 0 and not (val & (val - 1))
 
 
-def has_prim_rou(q: int, d: int) -> bool:
+def has_prim_rou(modulus: int, degree: int) -> bool:
     """
     Test whether Z/qZ has a primitive 2d-th root of unity.
     """
-    return q % (2 * d) == 1
+    return modulus % (2 * degree) == 1
 
 
-def is_ntt_friendly_prime(q: int, d: int) -> bool:
+def is_ntt_friendly_prime(modulus: int, degree: int) -> bool:
     """
     Test whether input integer pair can be used to construct an NTT-friendly ring.
 
-    :param q: Input modulus
-    :type q: int
-    :param d: Input degree
-    :type d: int
+    :param modulus: Input modulus
+    :type modulus: int
+    :param degree: Input degree
+    :type degree: int
 
     :return: Indicate whether q is prime and q-1 == 0 mod 2d.
     :rtype: bool
     """
-    return is_prime(q) and is_pow_two(d) and has_prim_rou(q=q, d=d)
+    return is_prime(modulus) and is_pow_two(degree) and has_prim_rou(modulus=modulus, degree=degree)
 
 
-def is_prim_rou(q: int, d: int, val: int) -> bool:
+def is_prim_rou(modulus: int, degree: int, val: int) -> bool:
     """
     Test whether input x is a primitive 2d^th root of unity in the integers modulo q. Does not require q and d to be
     NTT-friendly pair.
 
-    :param q: Input modulus
-    :type q: int
-    :param d: Input degree
-    :type d: int
+    :param modulus: Input modulus
+    :type modulus: int
+    :param degree: Input degree
+    :type degree: int
     :param val: Purported root of unity
     :type val: int
 
     :return: Boolean indicating x**(2d) == 1 and x**i != 1 for 1 <= i < 2d.
     :rtype: bool
     """
-    return all(val ** k % q != 1 for k in range(1, 2 * d)) and val ** (2 * d) % q == 1
+    return all(val ** k % modulus != 1 for k in range(1, 2 * degree)) and val ** (2 * degree) % modulus == 1
 
 
-def get_prim_rou_and_rou_inv(q: int, d: int) -> None | Tuple[int, int]:
+def get_prim_rou_and_rou_inv(modulus: int, degree: int) -> None | Tuple[int, int]:
     """
     Compute a primitive 2d-th root of unity modulo q and its inverse. Raises a ValueError if (d, q) are not NTT-
     friendly pair. Works by finding the first (in natural number order) primitive root of unity and its inverse.
 
-    :param q: Input modulus
-    :type q: int
-    :param d: Input degree
-    :type d: int
+    :param modulus: Input modulus
+    :type modulus: int
+    :param degree: Input degree
+    :type degree: int
 
     :return: Root of unity and its inverse in a tuple.
     :rtype: Tuple[int, int]
     """
-    if not (is_ntt_friendly_prime(q, d)):
+    if not (is_ntt_friendly_prime(modulus, degree)):
         raise ValueError('Input q and d are not ntt-friendly prime and degree.')
     # If we do not raise a ValueError, then there exists a primitive root of unity 2 <= x < q.
     x: int = 2
-    while x < q:
-        if is_prim_rou(q, d, x):
+    while x < modulus:
+        if is_prim_rou(modulus, degree, x):
             break
         x += 1
-    return x, ((x ** (2 * d - 1)) % q)
+    return x, ((x ** (2 * degree - 1)) % modulus)
 
 
 def is_bitstring(val: str) -> bool:
@@ -182,7 +183,7 @@ def bit_rev_cp(val: List[int], n: int) -> List[int]:
     :rtype: List[int]
     """
     if not is_pow_two(len(val)):
-        raise ValueError("Can only bit-reverse-copy arrays with power-of-two lengths.")
+        raise ValueError("Can only bit-reverse-copy arrays with power-of-two_with_const_time lengths.")
     return [val[bit_rev(n, i)] for i in range(len(val))]
 
 
@@ -207,7 +208,7 @@ def cent(q: int, halfmod: int, logmod: int, val: int) -> int:
     return y - (1 + (intermediate_value >> logmod)) * q
 
 
-def make_zetas_and_invs(q: int, d: int, halfmod: int, logmod: int, n: int, lgn: int) -> Tuple[List[int], List[int]]:
+def make_zetas_and_invs(q: int, d: int, n: int, lgn: int) -> Tuple[List[int], List[int]]:
     """
     Compute powers of primitive root of unity and its inverse for use in the NTT function. Finds the root of unity, say
     zeta, and its inverse, say zeta_inv, then outputs [zeta ** ((2d) // (2**(s+1))) for s in range(log2(2d))] and
@@ -217,27 +218,25 @@ def make_zetas_and_invs(q: int, d: int, halfmod: int, logmod: int, n: int, lgn: 
     :type q: int
     :param d: Input degree
     :type d: int
-    :param halfmod: q//2
-    :type halfmod: int
-    :param logmod: ceil(log2(q))
-    :type logmod: int
     :param n: 2*d
     :type n: int
     :param lgn: ceil(log2(n))
     :type lgn: int
 
-    :return: Return the powers of zeta and zeta_inv for use in NTT, two lists of integers, in a tuple
+    :return: Return the powers of zeta and zeta_inv for use in NTT, two_with_const_time lists of integers, in a tuple
     :rtype: Tuple[List[int], List[int]]
     """
     powers: List[int] = [n // (2 ** (s + 1)) for s in range(lgn)]
     zeta, zeta_inv = get_prim_rou_and_rou_inv(q, d)
-    left: List[int] = [cent(q=q, halfmod=halfmod, logmod=logmod, val=int(zeta ** i)) for i in powers]
-    right: List[int] = [cent(q=q, halfmod=halfmod, logmod=logmod, val=int(zeta_inv ** i)) for i in powers]
+    left: List[int] = [int(zeta ** i) % q for i in powers]
+    left = [i if i <= q//2 else i - q for i in left]
+    right: List[int] = [int(zeta_inv ** i) % q for i in powers]
+    right = [i if i <= q // 2 else i - q for i in right]
     return left, right
 
 
 def ntt(q: int, zetas: List[int], zetas_inv: List[int], inv_flag: bool, halfmod: int, logmod: int, n: int, lgn: int,
-        val: List[int]) -> List[int]:
+        val: List[int], const_time_flag: bool = True) -> List[int]:
     """
     Compute the NTT of the input list of integers. Implements the algorithm from Cormen, T. H., Leiserson, C. E.,
     Rivest, R. L., & Stein, C, (2009), "Introduction to algorithms," but replacing exp(-i*2*pi/n) with zeta.
@@ -260,13 +259,14 @@ def ntt(q: int, zetas: List[int], zetas_inv: List[int], inv_flag: bool, halfmod:
     :type n: int
     :param lgn: ceil(log2(n))
     :type lgn: int
-
+    :param const_time_flag: Indicates whether arithmetic should be constant-time.
+    :type const_time_flag: bool
 
     :return: Return the NTT (or inverse) of the inputs x.
     :rtype: List[int]
     """
     if sum(int(i) for i in bin(len(val))[2:]) != 1:
-        raise ValueError("Can only NTT arrays with lengths that are powers of two.")
+        raise ValueError("Can only NTT arrays with lengths that are powers of two_with_const_time.")
     bit_rev_x: List[int] = bit_rev_cp(val=val, n=ceil(log2(len(val))))
     m: int = 1
     for s in range(1, lgn + 1):
@@ -280,14 +280,26 @@ def ntt(q: int, zetas: List[int], zetas_inv: List[int], inv_flag: bool, halfmod:
             for j in range(m // 2):
                 t: int = w * bit_rev_x[k + j + m // 2]
                 u: int = bit_rev_x[k + j]
-                bit_rev_x[k + j]: int = cent(q=q, halfmod=halfmod, logmod=logmod, val=u + t)
-                bit_rev_x[k + j + m // 2]: int = cent(q=q, halfmod=halfmod, logmod=logmod, val=u - t)
+                if const_time_flag:
+                    bit_rev_x[k + j]: int = cent(q=q, halfmod=halfmod, logmod=logmod, val=u + t)
+                    bit_rev_x[k + j + m // 2]: int = cent(q=q, halfmod=halfmod, logmod=logmod, val=u - t)
+                else:
+                    bit_rev_x[k + j]: int = (u + t) % q
+                    if bit_rev_x[k + j] > q//2:
+                        bit_rev_x[k + j] = bit_rev_x[k + j] - q
+                    bit_rev_x[k + j + m // 2]: int = (u - t) % q
+                    if bit_rev_x[k + j + m // 2] > q//2:
+                        bit_rev_x[k + j + m // 2] = bit_rev_x[k + j + m // 2] - q
                 w *= this_zeta
     if inv_flag:
         n_inv: int = 1
         while (n_inv * n) % q != 1:
             n_inv += 1
-        bit_rev_x: List[int] = [cent(q=q, halfmod=halfmod, logmod=logmod, val=(n_inv * i)) for i in bit_rev_x]
+        if const_time_flag:
+            bit_rev_x: List[int] = [cent(q=q, halfmod=halfmod, logmod=logmod, val=(n_inv * i)) for i in bit_rev_x]
+        else:
+            bit_rev_x: List[int] = [(n_inv * i) % q for i in bit_rev_x]
+            bit_rev_x = [i if i <= q//2 else i - q for i in bit_rev_x]
     return bit_rev_x
 
 
@@ -370,10 +382,10 @@ class LatticeParameters(object):
         :type length: int
         """
         if degree < 2 or not is_pow_two(val=degree):
-            raise ValueError('LatticeParameters requires power-of-two integer degree.')
+            raise ValueError('LatticeParameters requires power-of-two_with_const_time integer degree.')
         elif length < 1:
             raise ValueError('LatticeParameters requires positive integer length.')
-        elif modulus < 3 or not is_ntt_friendly_prime(q=modulus, d=degree):
+        elif modulus < 3 or not is_ntt_friendly_prime(modulus=modulus, degree=degree):
             raise ValueError('LatticeParameters requires NTT-friendly prime modulus-degree pair.')
 
         self.degree = degree
@@ -383,10 +395,8 @@ class LatticeParameters(object):
         self.logmod = ceil(log2(self.modulus))
         self.n: int = 2 * self.degree
         self.lgn: int = ceil(log2(self.n))
-        self.rou, self.rou_inv = get_prim_rou_and_rou_inv(q=self.modulus, d=self.degree)
-        self.zetas, self.zetas_invs = make_zetas_and_invs(
-            q=self.modulus, d=self.degree, halfmod=self.halfmod, logmod=self.logmod, n=self.n, lgn=self.lgn
-        )
+        self.rou, self.rou_inv = get_prim_rou_and_rou_inv(modulus=self.modulus, degree=self.degree)
+        self.zetas, self.zetas_invs = make_zetas_and_invs(q=self.modulus, d=self.degree, n=self.n, lgn=self.lgn)
 
     def __eq__(self, other) -> bool:
         """
@@ -424,10 +434,12 @@ def decode2coef_inf_unif(secpar: int, lp: LatticeParameters, val: str, bits_to_d
         b = dist_pars['bd']
         raise ValueError(
             f'Cannot decode2coef_inf_unif with secpar = {secpar}, bd = {b} without requiring ' +
-            'at least {ceil(log2(b)) + 1 + secpar} bits.'
+            f'at least {ceil(log2(b)) + 1 + secpar} bits.'
         )
     elif not is_bitstring(val):
         raise ValueError('Cannot decode2coef_inf_unif without bitstring val.')
+    elif len(val) < bits_to_decode:
+        raise ValueError(f'Cannot decode2coef_inf_unif without at least {bits_to_decode} bits.')
     signum_bit: str = val[0]
     magnitude_minus_one_bits: str = val[1:]
     sign: int = 2 * int(signum_bit) - 1
@@ -442,7 +454,7 @@ def decode2coef(secpar: int, lp: LatticeParameters, val: str, distribution: str,
                 bits_to_decode: int) -> int:
     """
     Decode an input string x to a coefficient in [-bd, -bd+1, ...,-2, -1, 1, 2, ..., bd-1, bd] with bias O(2**-secpar),
-    if possible, and raise a ValueError if not possible. If bd = 1, this set is [-1, 1] and we only need one bit to
+    if possible, and raise a ValueError if not possible. If bd = 1, this set is [-1, 1] and we only need 1 bit to
     sample from exactly the uniform distribution. On the other hand, if bd > 1, then we use the first bit of x as a sign
     bit, and we use the rest as the binary expansion of an integer. We mod this integer out by bd, add 1 to the result
     to get an integer in the set [1, 2, ..., bd], and then we multiply by +1 if the sign bit is 1 and -1 if the sign bit
@@ -453,9 +465,9 @@ def decode2coef(secpar: int, lp: LatticeParameters, val: str, distribution: str,
 
     The information-theoretic minimum of the number of bits required to uniquely determine an integer modulo bd is
     exactly ceil(log2(bd)). However, if x is a uniformly sampled ceil(log2(bd)) bit integer, then unless bd is a power
-    of two, x % bd is not a uniformly distributed element of the integers modulo bd. If x is a uniformly sampled
-    ceil(log2(bd))+k bit integer for some integer k, then the bias of x % bd away from the uniform distribution is
-    O(2**-k). So to keep the bias negligible, we use secpar additional bits.
+    of two_with_const_time, x % bd is not a uniformly distributed element of the integers modulo bd. If x is a uniformly
+    sampled ceil(log2(bd))+k bit integer for some integer k, then the bias of x % bd away from the uniform distribution
+    is O(2**-k). So to keep the bias negligible, we use secpar additional bits.
 
     :param secpar: Input security parameter
     :type secpar: int
@@ -488,7 +500,7 @@ def decode2coefs(
 ) -> list[int]:
     """
     Decode an input string x to a list of integer coefficients. In general, breaks the input string into blocks of
-    1 + ceil(log2(bd)) + secpar bits each, and then merely calls decode2coef on each block. We do handle one weird edge
+    1 + ceil(log2(bd)) + secpar bits each, and then merely calls decode2coef on each block. We do handle a weird edge
     case, when the bound is 1 (see decode2coef for more info on that). If bd == 1, we need wt bits, and otherwise we
     need wt * (ceil(log2(bd)) + 1 + secpar) bits.
 
@@ -721,6 +733,8 @@ class Polynomial(object):
     ----------
         lp: LatticeParameters
             For use in all arithmetic
+        const_time_flag: bool
+            Determines whether arithmetic should be done in constant time.
         ntt_representation: List[int]
             The NTT of the polynomial.
 
@@ -731,13 +745,13 @@ class Polynomial(object):
         __eq__(self, other)
             Check for equality of polynomials
         __add__(self, other)
-            Add two polynomials
+            Add two_with_const_time polynomials
         __radd__(self, other)
-            Add two polynomials (or zero and a polynomial)
+            Add two_with_const_time polynomials (or zero and a polynomial)
         __sub__(self, other)
-            Subtract two polynomials
+            Subtract two_with_const_time polynomials
         __mul__(self, other)
-            Multiply two polynomials
+            Multiply two_with_const_time polynomials
         __repr__(self)
             String representation of the polynomial
         reset_vals(self, coefs: Dict[int, int])
@@ -750,9 +764,10 @@ class Polynomial(object):
             Convert to a bytes object
     """
     lp: LatticeParameters
+    const_time_flag: bool
     ntt_representation: List[int]
 
-    def __init__(self, lp: LatticeParameters, coefs: dict[int, int]):
+    def __init__(self, lp: LatticeParameters, coefs: dict[int, int], const_time_flag: bool = True):
         """
         Initialize a polynomial object by passing in a LatticeParameters object and coefs, which is a Dict[int, int]
         where keys are monomial exponents and values are coefficients.
@@ -769,6 +784,7 @@ class Polynomial(object):
                 f'Cannot create a polynomial with monomial exponents outside of [0, 1, ..., {lp.degree - 1}]'
             )
         self.lp = lp
+        self.const_time_flag = const_time_flag
         self._reset_vals(coefs=coefs)  # set the ntt_representation
 
     def __eq__(self, other) -> bool:
@@ -783,13 +799,13 @@ class Polynomial(object):
         """
         if self.lp != other.lp:
             return False
-        x = self.get_coef_rep(const_time_flag=True)
-        y = other.get_coef_rep(const_time_flag=True)
+        x = self.get_coef_rep()
+        y = other.get_coef_rep()
         return x == y
 
     def __add__(self, other):
         """
-        Add two polynomials.
+        Add two_with_const_time polynomials.
 
         :param other: Another Polynomial
         :type other: Polynomial
@@ -799,15 +815,23 @@ class Polynomial(object):
         if isinstance(other, int) and other == 0:
             return self
         result = deepcopy(self)
-        result.ntt_representation = [
-            cent(q=self.lp.modulus, halfmod=self.lp.halfmod, logmod=self.lp.logmod, val=x + y)
-            for x, y in zip(result.ntt_representation, other.ntt_representation)
-        ]
+        if self.const_time_flag:
+            result.ntt_representation = [
+                cent(q=self.lp.modulus, halfmod=self.lp.halfmod, logmod=self.lp.logmod, val=x + y)
+                for x, y in zip(result.ntt_representation, other.ntt_representation)
+            ]
+        else:
+            result.ntt_representation = [
+                (x + y) % self.lp.modulus for x, y in zip(result.ntt_representation, other.ntt_representation)
+            ]
+            result.ntt_representation = [
+                x if x <= self.lp.modulus//2 else x - self.lp.modulus for x in result.ntt_representation
+            ]
         return result
 
     def __radd__(self, other):
         """
-        Add two polynomials.
+        Add two_with_const_time polynomials.
 
         :param other: Another Polynomial
         :type other: Polynomial
@@ -820,7 +844,7 @@ class Polynomial(object):
 
     def __sub__(self, other):
         """
-        Subtract two polynomials.
+        Subtract two_with_const_time polynomials.
 
         :param other: Another Polynomial
         :type other: Polynomial
@@ -830,15 +854,23 @@ class Polynomial(object):
         if isinstance(other, int) and other == 0:
             return self
         result = deepcopy(self)
-        result.ntt_representation = [
-            cent(q=self.lp.modulus, halfmod=self.lp.halfmod, logmod=self.lp.logmod, val=x - y)
-            for x, y in zip(result.ntt_representation, other.ntt_representation)
-        ]
+        if self.const_time_flag:
+            result.ntt_representation = [
+                cent(q=self.lp.modulus, halfmod=self.lp.halfmod, logmod=self.lp.logmod, val=x - y)
+                for x, y in zip(result.ntt_representation, other.ntt_representation)
+            ]
+        else:
+            result.ntt_representation = [
+                (x - y) % self.lp.modulus for x, y in zip(result.ntt_representation, other.ntt_representation)
+            ]
+            result.ntt_representation = [
+                x if x <= self.lp.modulus//2 else x - self.lp.modulus for x in result.ntt_representation
+            ]
         return result
 
     def __mul__(self, other):
         """
-        Multiply two polynomials
+        Multiply two_with_const_time polynomials
 
         :param other: Other Polynomial
         :type other: Polynomial
@@ -848,10 +880,18 @@ class Polynomial(object):
         if isinstance(other, int) and other == 0:
             return 0
         result = deepcopy(self)
-        result.ntt_representation = [
-            cent(q=self.lp.modulus, halfmod=self.lp.halfmod, logmod=self.lp.logmod, val=x * y)
-            for x, y in zip(result.ntt_representation, other.ntt_representation)
-        ]
+        if self.const_time_flag:
+            result.ntt_representation = [
+                cent(q=self.lp.modulus, halfmod=self.lp.halfmod, logmod=self.lp.logmod, val=x * y)
+                for x, y in zip(result.ntt_representation, other.ntt_representation)
+            ]
+        else:
+            result.ntt_representation = [
+                (x * y) % self.lp.modulus for x, y in zip(result.ntt_representation, other.ntt_representation)
+            ]
+            result.ntt_representation = [
+                x if x <= self.lp.modulus//2 else x - self.lp.modulus for x in result.ntt_representation
+            ]
         return result
 
     def __rmul__(self, other):
@@ -873,7 +913,7 @@ class Polynomial(object):
         :return:
         :rtype: str
         """
-        coef_rep, norm, wt = self.get_coef_rep(const_time_flag=True)
+        coef_rep, norm, wt = self.get_coef_rep()
         sorted_keys = sorted(list(coef_rep.keys()))
         sorted_coefs = [(i, coef_rep[i]) for i in sorted_keys]
         return str((sorted_coefs, norm, wt))
@@ -889,7 +929,8 @@ class Polynomial(object):
         """
         return ntt(
             q=self.lp.modulus, zetas=self.lp.zetas, zetas_inv=self.lp.zetas_invs, val=val,
-            halfmod=self.lp.halfmod, logmod=self.lp.logmod, n=self.lp.n, lgn=self.lp.lgn, inv_flag=inv_flag
+            halfmod=self.lp.halfmod, logmod=self.lp.logmod, n=self.lp.n, lgn=self.lp.lgn, inv_flag=inv_flag,
+            const_time_flag=self.const_time_flag
         )
 
     def _reset_vals(self, coefs: Dict[int, int]) -> None:
@@ -905,7 +946,7 @@ class Polynomial(object):
                 tmp[i] += coefs[i]
         self.ntt_representation = self._ntt(inv_flag=False, val=tmp)
 
-    def get_coef_rep(self, const_time_flag: bool = False) -> Tuple[Dict[int, int], int, int]:
+    def get_coef_rep(self) -> Tuple[Dict[int, int], int, int]:
         """
         Compute the coefficient representation of the polynomial by performing the inverse NTT on self.vals, compute the
         norm and the wight, and return all these.
@@ -916,7 +957,7 @@ class Polynomial(object):
         tmp: List[int] = self._ntt(inv_flag=True, val=self.ntt_representation)
         left: List[int] = tmp[:self.lp.degree]
         right: List[int] = tmp[self.lp.degree:]
-        if const_time_flag:
+        if self.const_time_flag:
             coefs: List[int] = [
                 cent(q=self.lp.modulus, halfmod=self.lp.halfmod, logmod=self.lp.logmod, val=x - y)
                 for x, y in zip(left, right)
@@ -938,7 +979,7 @@ class Polynomial(object):
 
 def decode2poly(
         secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int], val: str,
-        num_coefs: int, bits_to_indices: int, bits_to_decode: int
+        num_coefs: int, bits_to_indices: int, bits_to_decode: int, const_time_flag: bool = True
 ) -> Polynomial:
     return Polynomial(
         lp=lp,
@@ -951,13 +992,14 @@ def decode2poly(
             num_coefs=num_coefs,
             bits_to_indices=bits_to_indices,
             bits_to_decode=bits_to_decode
-        )
+        ),
+        const_time_flag=const_time_flag,
     )
 
 
 def hash2polynomial(
         secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int], salt: str,
-        m: str, num_coefs: int, bits_to_indices: int, bits_to_decode: int
+        m: str, num_coefs: int, bits_to_indices: int, bits_to_decode: int, const_time_flag: bool = True
 ) -> Polynomial:
     """
     Hash an input message msg and salt to a polynomial with norm bound at most bd and weight at most wt.
@@ -980,6 +1022,8 @@ def hash2polynomial(
     :type bits_to_indices: int
     :param bits_to_decode: Number of bits required to unbiasedly sample an integer modulo the modulus in lp
     :type bits_to_decode: int
+    :param const_time_flag: Boolean indicating whether arithmetic should be const-time.
+    :type const_time_flag: bool
 
     :return:
     :rtype: Polynomial
@@ -993,12 +1037,12 @@ def hash2polynomial(
         secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, val=val, num_coefs=num_coefs,
         bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
     )
-    return Polynomial(lp=lp, coefs=coefs)
+    return Polynomial(lp=lp, coefs=coefs, const_time_flag=const_time_flag)
 
 
 def random_polynomial(
         secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int], num_coefs: int,
-        bits_to_indices: int, bits_to_decode: int
+        bits_to_indices: int, bits_to_decode: int, const_time_flag: bool = True
 ) -> Polynomial:
     """
     Generate a random polynomial with norm bounded by bd and weight bounded by wt. Relies on randbits from
@@ -1019,6 +1063,8 @@ def random_polynomial(
     :type bits_to_indices: int
     :param bits_to_decode: Number of bits required to unbiasedly sample an integer modulo the modulus in lp
     :type bits_to_decode: int
+    :param const_time_flag: Indicates whether arithmetic should be constant time.
+    :type const_time_flag: bool
 
     :return:
     :rtype: Polynomial
@@ -1031,7 +1077,7 @@ def random_polynomial(
     val: str = bin(randbits(num_bits_for_hashing))[2:].zfill(num_bits_for_hashing)
     return decode2poly(
         secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, val=val, num_coefs=num_coefs,
-        bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
+        bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode, const_time_flag=const_time_flag
     )
 
 
@@ -1043,6 +1089,8 @@ class PolynomialVector(object):
     ----------
         lp: LatticeParameters
             For use in all arithmetic.
+        const_time_flag: bool
+            Indicates whether arithmetic should be constant time.
         entries: List[Polynomial]
             The "vector" of polynomials.
 
@@ -1053,13 +1101,13 @@ class PolynomialVector(object):
         __eq__(self, other)
             Check for equality of PolynomialVectors
         __add__(self, other)
-            Add two PolynomialVectors
+            Add two_with_const_time PolynomialVectors
         __radd__(self, other)
-            Add two PolynomialVectors (or zero and a PolynomialVectors)
+            Add two_with_const_time PolynomialVectors (or zero and a PolynomialVectors)
         __sub__(self, other)
-            Subtract two PolynomialVectors
+            Subtract two_with_const_time PolynomialVectors
         __mul__(self, other)
-            Compute the dot product of two polynomial vectors.
+            Compute the dot product of two_with_const_time polynomial vectors.
         __pow__(self, other: Polynomial)
             Scale self
         __repr__(self)
@@ -1072,9 +1120,10 @@ class PolynomialVector(object):
             Return the length of coefs.
     """
     lp: LatticeParameters
+    const_time_flag: bool
     entries: List[Polynomial]
 
-    def __init__(self, lp: LatticeParameters, entries: list[Polynomial]):
+    def __init__(self, lp: LatticeParameters, entries: list[Polynomial], const_time_flag: bool = True):
         """
         Instantiate with some input LatticeParameters and a list of Polynomial entries.
 
@@ -1085,7 +1134,11 @@ class PolynomialVector(object):
         """
         if not all(i.lp == lp for i in entries):
             raise ValueError('Can only create PolynomialVector with all common lattice parameters.')
+        elif not all(i.const_time_flag == const_time_flag for i in entries):
+            raise ValueError('The const_time_flag for each entry in the PolynomialVector must match ' +
+                             'the const_time_flag of the PolynomialVector.')
         self.lp = lp
+        self.const_time_flag = const_time_flag
         self.entries = entries
 
     def __eq__(self, other) -> bool:
@@ -1140,7 +1193,7 @@ class PolynomialVector(object):
 
     def __mul__(self, other) -> Polynomial:
         """
-        Dot product between two polynomial vectors.
+        Dot product between two_with_const_time polynomial vectors.
 
         :param other: Other PolynomialVector
         :type other: PolynomialVector
@@ -1164,6 +1217,8 @@ class PolynomialVector(object):
         :rtype: PolynomialVector
         """
         # Abuse ** operator to scale vectors: cv = v**c
+        if scalar.const_time_flag != self.const_time_flag:
+            raise ValueError('Cannot scale a PolynomialVector with a different const_time_flag than the scalar.')
         result = deepcopy(self)
         result.entries = [scalar * i for i in result.entries]
         return result
@@ -1177,14 +1232,14 @@ class PolynomialVector(object):
         """
         return str(self.entries)
 
-    def get_coef_rep(self, const_time_flag: bool = True) -> List[Tuple[Dict[int, int], int, int]]:
+    def get_coef_rep(self) -> List[Tuple[Dict[int, int], int, int]]:
         """
         Calls get_coef_rep for each entry.
 
         :return:
         :rtype: List[Tuple[Dict[int, int], int, int]]
         """
-        return [val.get_coef_rep(const_time_flag=const_time_flag) for i, val in enumerate(self.entries)]
+        return [val.get_coef_rep() for i, val in enumerate(self.entries)]
 
     def to_bytes(self) -> bytearray:
         return sum(i.to_bytes() for i in self.entries)
@@ -1195,7 +1250,7 @@ class PolynomialVector(object):
 
 def decode2polynomialvector(
         secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int], val: str,
-        num_coefs: int, bits_to_indices: int, bits_to_decode: int
+        num_coefs: int, bits_to_indices: int, bits_to_decode: int, const_time_flag: bool = True
 ) -> PolynomialVector:
     if not is_bitstring(val):
         raise ValueError('Can only decode to a polynomial vector with an input bitstring val.')
@@ -1221,14 +1276,15 @@ def decode2polynomialvector(
                 bits_to_indices=bits_to_indices,
                 bits_to_decode=bits_to_decode,
             ),
+            const_time_flag=const_time_flag,
         ) for i in range(lp.length)
     ]
-    return PolynomialVector(lp=lp, entries=entries)
+    return PolynomialVector(lp=lp, entries=entries, const_time_flag=const_time_flag)
 
 
 def random_polynomial_vector_inf_wt_unif(
         secpar: int, lp: LatticeParameters, dist_pars: dict[str, int], num_coefs: int,
-        bits_to_indices: int, bits_to_decode: int
+        bits_to_indices: int, bits_to_decode: int, const_time_flag: bool = True
 ) -> PolynomialVector:
     if 'bd' not in dist_pars or not isinstance(dist_pars['bd'], int) or \
             dist_pars['bd'] < 1 or dist_pars['bd'] > lp.modulus // 2:
@@ -1245,13 +1301,13 @@ def random_polynomial_vector_inf_wt_unif(
     return decode2polynomialvector(
         secpar=secpar, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=dist_pars,
         num_coefs=num_coefs, bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode,
-        val=bin(randbits(k))[2:].zfill(k)
+        val=bin(randbits(k))[2:].zfill(k), const_time_flag=const_time_flag
     )
 
 
 def random_polynomialvector(
         secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int], num_coefs: int,
-        bits_to_indices: int, bits_to_decode: int
+        bits_to_indices: int, bits_to_decode: int, const_time_flag: bool = True
 ) -> PolynomialVector:
     """
     Generate a random PolynomialVector with bounded Polynomial entries. Essentially just instantiates a PolynomialVector
@@ -1271,6 +1327,8 @@ def random_polynomialvector(
     :type bits_to_indices: int
     :param bits_to_decode: Number of bits required to unbiasedly sample an integer modulo the modulus in lp
     :type bits_to_decode: int
+    :param const_time_flag: Indicates whether arithmetic should be constant time.
+    :type const_time_flag: bool
 
     :return:
     :rtype: PolynomialVector
@@ -1280,14 +1338,14 @@ def random_polynomialvector(
     elif distribution == UNIFORM_INFINITY_WEIGHT:
         return random_polynomial_vector_inf_wt_unif(
             secpar=secpar, lp=lp, dist_pars=dist_pars, num_coefs=num_coefs,
-            bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
+            bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode, const_time_flag=const_time_flag
         )
     raise ValueError('Tried to random_polynomialvector with a distribution that is not supported.')
 
 
 def hash2polynomialvector(
         secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int], num_coefs: int,
-        bits_to_indices: int, bits_to_decode: int, msg: str, salt: str
+        bits_to_indices: int, bits_to_decode: int, msg: str, salt: str, const_time_flag: bool = True
 ) -> PolynomialVector:
     """
     Hash an input message msg and salt to a polynomial vector with norm bound at most bd and weight at most wt. Just
@@ -1311,6 +1369,8 @@ def hash2polynomialvector(
     :type bits_to_indices: int
     :param bits_to_decode: Number of bits required to unbiasedly sample an integer modulo the modulus in lp
     :type bits_to_decode: int
+    :param const_time_flag: Indicates whether arithmetic should be constant time.
+    :type const_time_flag: bool
 
     :return: Call decode2polycoefs for length, create Polynomial for each, return a PolynomialVector with these entries
     :rtype: PolynomialVector
@@ -1322,5 +1382,6 @@ def hash2polynomialvector(
     val: str = binary_digest(msg=msg, num_bytes=k, salt=salt)
     return decode2polynomialvector(
         secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, val=val,
-        num_coefs=num_coefs, bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
+        num_coefs=num_coefs, bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode,
+        const_time_flag=const_time_flag
     )

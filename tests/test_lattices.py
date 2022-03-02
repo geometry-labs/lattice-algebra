@@ -11,7 +11,6 @@ from copy import deepcopy
 from secrets import randbelow, randbits
 from typing import List, Tuple, Dict
 
-# Test runtime is O(3 minutes + sample_size * 20 seconds) on my desktop
 sample_size_for_random_tests: int = 2 ** 3
 
 small_q_for_testing: int = 17
@@ -58,7 +57,7 @@ IS_PRIME_CASES = [
 # @pytest.mark.skip
 @pytest.mark.parametrize("q,expected_output", IS_PRIME_CASES)
 def test_is_prime(q, expected_output):
-    assert is_prime(q=q) == expected_output
+    assert is_prime(val=q) == expected_output
 
 
 IS_POW_TWO_CASES = [
@@ -87,13 +86,13 @@ HAS_PRIM_ROU_CASES = [
     (258, 64, False),
     (8380417, 256, True),  # CRYSTALS-Dilithium
     (8380418, 256, False),
-    (201, 25, True),  # We don't need the primality of q or power-of-two d
+    (201, 25, True),  # We don't need the primality of q or power-of-two_with_const_time d
 ]
 
 
 @pytest.mark.parametrize("q,d,expected_output", HAS_PRIM_ROU_CASES)
 def test_has_prim_rou(q, d, expected_output):
-    assert has_prim_rou(q=q, d=d) == expected_output
+    assert has_prim_rou(modulus=q, degree=d) == expected_output
 
 
 NTT_FRIENDLY_CASES = [
@@ -113,7 +112,7 @@ def test_is_ntt_friendly_prime_with_mock(mocker, foo, bar, baz, expected_output)
     mocker.patch('lattice_algebra.main.is_prime', return_value=foo)
     mocker.patch('lattice_algebra.main.is_pow_two', return_value=bar)
     mocker.patch('lattice_algebra.main.has_prim_rou', return_value=baz)
-    assert is_ntt_friendly_prime(q=1, d=1) == expected_output  # the actual input doesn't matter
+    assert is_ntt_friendly_prime(modulus=1, degree=1) == expected_output  # the actual input doesn't matter
 
 
 IS_PRIM_ROU_CASES = [
@@ -142,14 +141,14 @@ IS_PRIM_ROU_CASES = [
 
 @pytest.mark.parametrize("q,d,i,expected_output", IS_PRIM_ROU_CASES)
 def test_is_prim_rou(q, d, i, expected_output):
-    assert is_prim_rou(q=q, d=d, val=i) == expected_output
+    assert is_prim_rou(modulus=q, degree=d, val=i) == expected_output
 
 
 def test_get_prim_rou_and_rou_inv_value_errors():
     with pytest.raises(ValueError):
-        get_prim_rou_and_rou_inv(q=small_non_prime_for_testing, d=small_d_for_testing)
+        get_prim_rou_and_rou_inv(modulus=small_non_prime_for_testing, degree=small_d_for_testing)
     with pytest.raises(ValueError):
-        get_prim_rou_and_rou_inv(q=small_non_ntt_prime_for_testing, d=small_d_for_testing)
+        get_prim_rou_and_rou_inv(modulus=small_non_ntt_prime_for_testing, degree=small_d_for_testing)
 
 
 GET_PRIM_ROU_AND_ROU_INV_CASES = [
@@ -171,7 +170,7 @@ GET_PRIM_ROU_AND_ROU_INV_CASES = [
 
 @pytest.mark.parametrize("q,d,expected_output", GET_PRIM_ROU_AND_ROU_INV_CASES)
 def test_get_prim_rou_and_rou_inv(q, d, expected_output):
-    x, y = get_prim_rou_and_rou_inv(q=q, d=d)
+    x, y = get_prim_rou_and_rou_inv(modulus=q, degree=d)
     assert x, y == expected_output
     assert x != 0
     assert y != 0
@@ -275,7 +274,7 @@ ZETAS_AND_INVS_CASES = [
 
 @pytest.mark.parametrize("q,d,halfmod,logmod,n,lgn,expected_output", ZETAS_AND_INVS_CASES)
 def test_make_zetas_and_invs(q, d, halfmod, logmod, n, lgn, expected_output):
-    assert make_zetas_and_invs(q=q, d=d, halfmod=halfmod, logmod=logmod, n=n, lgn=lgn) == expected_output
+    assert make_zetas_and_invs(q=q, d=d, n=n, lgn=lgn) == expected_output
 
 
 ZETAS = [
@@ -289,7 +288,7 @@ ZETAS = [
 @pytest.mark.parametrize("q,d,halfmod,logmod,n,lgn,rou,rou_inv,expected_output", ZETAS)
 def test_make_zetas(mocker, q, d, halfmod, logmod, n, lgn, rou, rou_inv, expected_output):
     mocker.patch('lattice_algebra.main.get_prim_rou_and_rou_inv', return_value=(rou, rou_inv))
-    assert make_zetas_and_invs(q=q, d=d, halfmod=halfmod, logmod=logmod, n=n, lgn=lgn) == expected_output
+    assert make_zetas_and_invs(q=q, d=d, n=n, lgn=lgn) == expected_output
 
 
 # We only test the NTT and inverse of constant polynomials here; more thorough tests are advisable
@@ -496,15 +495,18 @@ def test_get_gen_bits(secpar, lp, dist, dist_pars, num_coefs, bits_to_indices, b
     )
     assert observed_output == expected_output
 
-
-# TODO: Modify the following tests to be properly parameterized, mocked, and fixtured
+# TODO: Pick up parameterizing from here.
 @pytest.fixture
-def one() -> Polynomial:
+def one_with_const_time() -> Polynomial:
     return Polynomial(lp=lp_for_testing, coefs={0: 1})
 
+@pytest.fixture
+def one_without_const_time() -> Polynomial:
+    return Polynomial(lp=lp_for_testing, coefs={0: 1}, const_time_flag=False)
+
 
 @pytest.fixture
-def some_ran_lin_polys() -> List[Tuple[int, int, Polynomial]]:
+def some_ran_lin_polys_with_const_time() -> List[Tuple[int, int, Polynomial]]:
     result = []
     for i in range(2 * sample_size_for_random_tests):
         a = (2 * randbits(1) - 1) * (randbelow(lp_for_testing.halfmod) + 1)
@@ -513,38 +515,62 @@ def some_ran_lin_polys() -> List[Tuple[int, int, Polynomial]]:
     return result
 
 
+@pytest.fixture
+def some_ran_lin_polys_without_const_time() -> List[Tuple[int, int, Polynomial]]:
+    result = []
+    for i in range(2 * sample_size_for_random_tests):
+        a = (2 * randbits(1) - 1) * (randbelow(lp_for_testing.halfmod) + 1)
+        b = (2 * randbits(1) - 1) * (randbelow(lp_for_testing.halfmod) + 1)
+        result += [(a, b, Polynomial(lp=lp_for_testing, coefs={0: a, 1: b}, const_time_flag=False))]
+    return result
+
+
 # @pytest.mark.skip
-def test_polynomial_init(one, some_ran_lin_polys):
+def test_polynomial_init_with_const_time(one_with_const_time, some_ran_lin_polys_with_const_time):
     lp: LatticeParameters = lp_for_testing
 
     # First, let's mess with the identity polynomial
-    assert one.ntt_representation == [1 for _ in range(n_for_testing)]
+    assert one_with_const_time.ntt_representation == [1 for _ in range(n_for_testing)]
 
     # Now let's make some random linear polynomials
-    for next_tuple in some_ran_lin_polys:
+    for next_tuple in some_ran_lin_polys_with_const_time:
         a, b, f = next_tuple
         assert -lp.halfmod <= a <= lp.halfmod
         assert -lp.halfmod <= b <= lp.halfmod
         assert isinstance(f, Polynomial)
-        assert f.ntt_representation == [
-            cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=a + b * lp.rou ** k) for k in range(lp.n)
-        ]
+        assert all((j - (a + b * lp.rou ** k)) % lp.modulus == 0 for k, j in zip(range(lp.n), f.ntt_representation))
 
 
 # @pytest.mark.skip
-def test_polynomial_eq(one, some_ran_lin_polys):
+def test_polynomial_init_without_const_time(one_without_const_time, some_ran_lin_polys_without_const_time):
     lp: LatticeParameters = lp_for_testing
 
-    # First, let's make two identity polynomials and check they are equal.
+    # First, let's mess with the identity polynomial
+    assert one_without_const_time.ntt_representation == [1 for _ in range(n_for_testing)]
+
+    # Now let's make some random linear polynomials
+    for next_tuple in some_ran_lin_polys_without_const_time:
+        a, b, f = next_tuple
+        assert -lp.halfmod <= a <= lp.halfmod
+        assert -lp.halfmod <= b <= lp.halfmod
+        assert isinstance(f, Polynomial)
+        assert all((j - (a + b * lp.rou ** k)) % lp.modulus == 0 for k, j in zip(range(lp.n), f.ntt_representation))
+
+
+# @pytest.mark.skip
+def test_polynomial_eq_with_const_time(one_with_const_time, some_ran_lin_polys_with_const_time):
+    lp: LatticeParameters = lp_for_testing
+
+    # First, let's make two_with_const_time identity polynomials and check they are equal.
     another_one = Polynomial(lp=lp, coefs={0: 1})
-    assert one == another_one
+    assert one_with_const_time == another_one
 
     # Now check that if we change a single coefficient, the result changes
     not_one = Polynomial(lp=lp, coefs={0: -1})
-    assert one != not_one
+    assert one_with_const_time != not_one
 
     # Now let's do the same with some random linear polynomials
-    for next_tuple in some_ran_lin_polys:
+    for next_tuple in some_ran_lin_polys_with_const_time:
         a, b, next_poly = next_tuple
         another_poly = Polynomial(lp=lp, coefs={0: a, 1: b})
         assert next_poly == another_poly
@@ -554,21 +580,57 @@ def test_polynomial_eq(one, some_ran_lin_polys):
         assert next_poly != not_another_poly
 
 
+# @pytest.mark.skip
+def test_polynomial_eq_without_const_time(one_without_const_time, some_ran_lin_polys_without_const_time):
+    lp: LatticeParameters = lp_for_testing
+
+    # First, let's make two_with_const_time identity polynomials and check they are equal.
+    another_one = Polynomial(lp=lp, coefs={0: 1}, const_time_flag=False)
+    assert one_without_const_time == another_one
+
+    # Now check that if we change a single coefficient, the result changes
+    not_one = Polynomial(lp=lp, coefs={0: -1}, const_time_flag=False)
+    assert one_without_const_time != not_one
+
+    # Now let's do the same with some random linear polynomials
+    for next_tuple in some_ran_lin_polys_without_const_time:
+        a, b, next_poly = next_tuple
+        another_poly = Polynomial(lp=lp, coefs={0: a, 1: b}, const_time_flag=False)
+        assert next_poly == another_poly
+
+        # Now check that if we change a single coefficient, the result changes
+        not_another_poly = Polynomial(lp=lp, coefs={0: a, 1: -b}, const_time_flag=False)
+        assert next_poly != not_another_poly
+
+
 @pytest.fixture
-def two() -> Polynomial:
+def two_with_const_time() -> Polynomial:
     return Polynomial(lp=lp_for_testing, coefs={0: 2})
 
 
 @pytest.fixture
-def pairs_ran_lin_poly(some_ran_lin_polys) -> List[Tuple[Tuple[int, int, Polynomial], Tuple[int, int, Polynomial]]]:
+def two_without_const_time() -> Polynomial:
+    return Polynomial(lp=lp_for_testing, coefs={0: 2}, const_time_flag=False)
+
+
+@pytest.fixture
+def pairs_ran_lin_poly_with_const_time(some_ran_lin_polys_with_const_time) -> List[Tuple[Tuple[int, int, Polynomial], Tuple[int, int, Polynomial]]]:
     result = []
     for i in range(0, sample_size_for_random_tests, 2):
-        result += [(some_ran_lin_polys[i], some_ran_lin_polys[i + 1])]
+        result += [(some_ran_lin_polys_with_const_time[i], some_ran_lin_polys_with_const_time[i + 1])]
     return result
 
 
 @pytest.fixture
-def pairs_of_random_polys_and_their_sums(pairs_ran_lin_poly) -> List[
+def pairs_ran_lin_poly_without_const_time(some_ran_lin_polys_without_const_time) -> List[Tuple[Tuple[int, int, Polynomial], Tuple[int, int, Polynomial]]]:
+    result = []
+    for i in range(0, sample_size_for_random_tests, 2):
+        result += [(some_ran_lin_polys_without_const_time[i], some_ran_lin_polys_without_const_time[i + 1])]
+    return result
+
+
+@pytest.fixture
+def pairs_of_random_polys_and_their_sums_with_const_time(pairs_ran_lin_poly_with_const_time) -> List[
     Tuple[
         Tuple[int, int, Polynomial],
         Tuple[int, int, Polynomial],
@@ -577,18 +639,59 @@ def pairs_of_random_polys_and_their_sums(pairs_ran_lin_poly) -> List[
     ]
 ]:
     result = []
-    for next_pair in pairs_ran_lin_poly:
+    for next_pair in pairs_ran_lin_poly_with_const_time:
         next_f, next_g = next_pair
         a_f, b_f, f = next_f
         a_g, b_g, g = next_g
         observed_h = f + g
-        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.get_coef_rep(const_time_flag=False)
-        a_h = cent(
-            q=lp_for_testing.modulus, val=a_f + a_g, halfmod=lp_for_testing.halfmod, logmod=lp_for_testing.logmod
-        )
-        b_h = cent(
-            q=lp_for_testing.modulus, val=b_f + b_g, halfmod=lp_for_testing.halfmod, logmod=lp_for_testing.logmod
-        )
+        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.get_coef_rep()
+        a_h = (a_f + a_g) % lp_for_testing.modulus
+        if a_h > lp_for_testing.modulus // 2:
+            a_h -= lp_for_testing.modulus
+        b_h = (b_f + b_g) % lp_for_testing.modulus
+        if b_h > lp_for_testing.modulus//2:
+            b_h -= lp_for_testing.modulus
+        expected_h_coefs = {}
+        if a_h != 0:
+            expected_h_coefs[0] = a_h
+        if b_h != 0:
+            expected_h_coefs[1] = b_h
+        expected_h = Polynomial(lp=lp_for_testing, coefs=expected_h_coefs)
+        expected_h_norm = max(abs(a_h), abs(b_h))
+        expected_h_wt = len(expected_h_coefs)
+        result += [
+            (
+                next_f,
+                next_g,
+                (a_h, b_h, expected_h, expected_h_norm, expected_h_wt),
+                (obs_h_coefs, observed_h, obs_h_norm, obs_h_wt)
+            )
+        ]
+    return result
+
+
+@pytest.fixture
+def pairs_of_random_polys_and_their_sums_without_const_time(pairs_ran_lin_poly_without_const_time) -> List[
+    Tuple[
+        Tuple[int, int, Polynomial],
+        Tuple[int, int, Polynomial],
+        Tuple[int, int, Polynomial, int, int],
+        Tuple[dict, Polynomial, int, int]
+    ]
+]:
+    result = []
+    for next_pair in pairs_ran_lin_poly_without_const_time:
+        next_f, next_g = next_pair
+        a_f, b_f, f = next_f
+        a_g, b_g, g = next_g
+        observed_h = f + g
+        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.get_coef_rep()
+        a_h = (a_f + a_g) % lp_for_testing.modulus
+        if a_h > lp_for_testing.modulus // 2:
+            a_h -= lp_for_testing.modulus
+        b_h = (b_f + b_g) % lp_for_testing.modulus
+        if b_h > lp_for_testing.modulus//2:
+            b_h -= lp_for_testing.modulus
         expected_h_coefs = {}
         if a_h != 0:
             expected_h_coefs[0] = a_h
@@ -609,13 +712,13 @@ def pairs_of_random_polys_and_their_sums(pairs_ran_lin_poly) -> List[
 
 
 # @pytest.mark.skip
-def test_polynomial_add(one, two, pairs_of_random_polys_and_their_sums):
+def test_polynomial_add_with_const_time(one_with_const_time, two_with_const_time, pairs_of_random_polys_and_their_sums_with_const_time):
     lp = lp_for_testing
     # First, let's make an identity polynomials and add it to itself
-    assert one + one == two
+    assert one_with_const_time + one_with_const_time == two_with_const_time
 
     # Now let's do some addition with some random linear polynomials (AND the unity)
-    for next_item in pairs_of_random_polys_and_their_sums:
+    for next_item in pairs_of_random_polys_and_their_sums_with_const_time:
         f_dat, g_dat, expected_h_dat, observed_h_dat = next_item
         a_f, b_f, f = f_dat
         a_g, b_g, g = g_dat
@@ -625,14 +728,37 @@ def test_polynomial_add(one, two, pairs_of_random_polys_and_their_sums):
         assert len(obs_h_coefs) == 2
         assert 0 in obs_h_coefs
         assert 1 in obs_h_coefs
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=obs_h_coefs[0] - a_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=obs_h_coefs[1] - b_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=a_f + a_g - a_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=b_f + b_g - b_h) == 0
+        assert (obs_h_coefs[0] - a_h) % lp.modulus == 0
+        assert (obs_h_coefs[1] - b_h) % lp.modulus == 0
+        assert (a_f + a_g - a_h) % lp.modulus == 0
+        assert (b_f + b_g - b_h) % lp.modulus == 0
+
+
+# @pytest.mark.skip
+def test_polynomial_add_without_const_time(one_without_const_time, two_without_const_time, pairs_of_random_polys_and_their_sums_without_const_time):
+    lp = lp_for_testing
+    # First, let's make an identity polynomials and add it to itself
+    assert one_without_const_time + one_without_const_time == two_without_const_time
+
+    # Now let's do some addition with some random linear polynomials (AND the unity)
+    for next_item in pairs_of_random_polys_and_their_sums_without_const_time:
+        f_dat, g_dat, expected_h_dat, observed_h_dat = next_item
+        a_f, b_f, f = f_dat
+        a_g, b_g, g = g_dat
+        a_h, b_h, exp_h, exp_h_norm, exp_h_wt = expected_h_dat
+        obs_h_coefs, obs_h, obs_h_norm, obs_h_wt = observed_h_dat
+        assert f + g == exp_h == obs_h
+        assert len(obs_h_coefs) == 2
+        assert 0 in obs_h_coefs
+        assert 1 in obs_h_coefs
+        assert (obs_h_coefs[0] - a_h) % lp.modulus == 0
+        assert (obs_h_coefs[1] - b_h) % lp.modulus == 0
+        assert (a_f + a_g - a_h) % lp.modulus == 0
+        assert (b_f + b_g - b_h) % lp.modulus == 0
 
 
 @pytest.fixture
-def pairs_of_random_polys_and_their_diffs(pairs_ran_lin_poly) -> \
+def pairs_of_random_polys_and_their_diffs_with_const_time(pairs_ran_lin_poly_with_const_time) -> \
         List[
             Tuple[
                 Tuple[int, int, Polynomial],
@@ -641,16 +767,12 @@ def pairs_of_random_polys_and_their_diffs(pairs_ran_lin_poly) -> \
                 Tuple[Dict[int, int], Polynomial, int, int]]
         ]:
     result = []
-    for next_pair in pairs_ran_lin_poly:
+    for next_pair in pairs_ran_lin_poly_with_const_time:
         next_f, next_g = next_pair
         a_f, b_f, f = next_f
         a_g, b_g, g = next_g
-        a_h = cent(
-            q=lp_for_testing.modulus, val=a_f - a_g, halfmod=lp_for_testing.halfmod, logmod=lp_for_testing.logmod
-        )
-        b_h = cent(
-            q=lp_for_testing.modulus, val=b_f - b_g, halfmod=lp_for_testing.halfmod, logmod=lp_for_testing.logmod
-        )
+        a_h = (a_f - a_g) % lp_for_testing.modulus
+        b_h = (b_f - b_g) % lp_for_testing.modulus
         expected_h_coefs: dict = {}
         if a_h != 0:
             expected_h_coefs[0] = a_h
@@ -660,7 +782,45 @@ def pairs_of_random_polys_and_their_diffs(pairs_ran_lin_poly) -> \
         expected_h_wt: int = len(expected_h_coefs)
 
         observed_h = f - g
-        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.get_coef_rep(const_time_flag=False)
+        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.get_coef_rep()
+        expected_h = Polynomial(lp=lp_for_testing, coefs=expected_h_coefs)
+        result += [
+            (
+                next_f,
+                next_g,
+                (a_h, b_h, expected_h, expected_h_norm, expected_h_wt),
+                (obs_h_coefs, observed_h, obs_h_norm, obs_h_wt)
+            )
+        ]
+    return result
+
+
+@pytest.fixture
+def pairs_of_random_polys_and_their_diffs_without_const_time(pairs_ran_lin_poly_without_const_time) -> \
+        List[
+            Tuple[
+                Tuple[int, int, Polynomial],
+                Tuple[int, int, Polynomial],
+                Tuple[int, int, Polynomial, int, int],
+                Tuple[Dict[int, int], Polynomial, int, int]]
+        ]:
+    result = []
+    for next_pair in pairs_ran_lin_poly_without_const_time:
+        next_f, next_g = next_pair
+        a_f, b_f, f = next_f
+        a_g, b_g, g = next_g
+        a_h = (a_f - a_g) % lp_for_testing.modulus
+        b_h = (b_f - b_g) % lp_for_testing.modulus
+        expected_h_coefs: dict = {}
+        if a_h != 0:
+            expected_h_coefs[0] = a_h
+        if b_h != 0:
+            expected_h_coefs[1] = b_h
+        expected_h_norm: int = max(abs(expected_h_coefs[i]) for i in expected_h_coefs)
+        expected_h_wt: int = len(expected_h_coefs)
+
+        observed_h = f - g
+        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.get_coef_rep()
         expected_h = Polynomial(lp=lp_for_testing, coefs=expected_h_coefs)
         result += [
             (
@@ -674,10 +834,10 @@ def pairs_of_random_polys_and_their_diffs(pairs_ran_lin_poly) -> \
 
 
 # @pytest.mark.skip
-def test_polynomial_sub(pairs_of_random_polys_and_their_diffs):
+def test_polynomial_sub_with_const_time(pairs_of_random_polys_and_their_diffs_with_const_time):
     lp: LatticeParameters = lp_for_testing
     # Now let's do some addition with some random linear polynomials (AND the unity)
-    for next_item in pairs_of_random_polys_and_their_diffs:
+    for next_item in pairs_of_random_polys_and_their_diffs_with_const_time:
         f_dat, g_dat, expected_h_dat, observed_h_dat = next_item
         a_f, b_f, f = f_dat
         a_g, b_g, g = g_dat
@@ -687,14 +847,34 @@ def test_polynomial_sub(pairs_of_random_polys_and_their_diffs):
         assert len(obs_h_coefs) == 2
         assert 0 in obs_h_coefs
         assert 1 in obs_h_coefs
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=obs_h_coefs[0] - a_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=obs_h_coefs[1] - b_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=a_f - a_g - a_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=b_f - b_g - b_h) == 0
+        assert (obs_h_coefs[0] - a_h) % lp.modulus == 0
+        assert (obs_h_coefs[1] - b_h) % lp.modulus == 0
+        assert (a_f - a_g - a_h) % lp.modulus == 0
+        assert (b_f - b_g - b_h) % lp.modulus == 0
+
+
+# @pytest.mark.skip
+def test_polynomial_sub_without_const_time(pairs_of_random_polys_and_their_diffs_without_const_time):
+    lp: LatticeParameters = lp_for_testing
+    # Now let's do some addition with some random linear polynomials (AND the unity)
+    for next_item in pairs_of_random_polys_and_their_diffs_without_const_time:
+        f_dat, g_dat, expected_h_dat, observed_h_dat = next_item
+        a_f, b_f, f = f_dat
+        a_g, b_g, g = g_dat
+        a_h, b_h, exp_h, exp_h_norm, exp_h_wt = expected_h_dat
+        obs_h_coefs, obs_h, obs_h_norm, obs_h_wt = observed_h_dat
+        assert f - g == exp_h == obs_h
+        assert len(obs_h_coefs) == 2
+        assert 0 in obs_h_coefs
+        assert 1 in obs_h_coefs
+        assert (obs_h_coefs[0] - a_h) % lp.modulus == 0
+        assert (obs_h_coefs[1] - b_h) % lp.modulus == 0
+        assert (a_f - a_g - a_h) % lp.modulus == 0
+        assert (b_f - b_g - b_h) % lp.modulus == 0
 
 
 @pytest.fixture
-def pairs_of_random_polys_and_their_products(pairs_ran_lin_poly) -> \
+def pairs_of_random_polys_and_their_products_with_const_time(pairs_ran_lin_poly_with_const_time) -> \
         List[
             Tuple[
                 Tuple[int, int, Polynomial],
@@ -704,22 +884,13 @@ def pairs_of_random_polys_and_their_products(pairs_ran_lin_poly) -> \
             ]
         ]:
     result = []
-    for next_pair in pairs_ran_lin_poly:
+    for next_pair in pairs_ran_lin_poly_with_const_time:
         next_f, next_g = next_pair
         a_f, b_f, f = next_f
         a_g, b_g, g = next_g
-        a_h = cent(
-            q=lp_for_testing.modulus, halfmod=lp_for_testing.halfmod, logmod=lp_for_testing.logmod, val=a_f * a_g
-        )
-        b_h = cent(
-            q=lp_for_testing.modulus,
-            halfmod=lp_for_testing.halfmod,
-            logmod=lp_for_testing.logmod,
-            val=a_f * b_g + b_f * a_g
-        )
-        c_h = cent(
-            q=lp_for_testing.modulus, halfmod=lp_for_testing.halfmod, logmod=lp_for_testing.logmod, val=b_f * b_g
-        )
+        a_h = (a_f * a_g) % lp_for_testing.modulus
+        b_h = (a_f * b_g + b_f * a_g) % lp_for_testing.modulus
+        c_h = (b_f * b_g) % lp_for_testing.modulus
         exp_h_coefs = {}
         if a_h != 0:
             exp_h_coefs[0] = a_h
@@ -730,7 +901,48 @@ def pairs_of_random_polys_and_their_products(pairs_ran_lin_poly) -> \
         exp_h_norm = max(abs(a_h), abs(b_h), abs(c_h))
         exp_h_wt = len(exp_h_coefs)
         observed_h = f * g
-        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.get_coef_rep(const_time_flag=False)
+        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.get_coef_rep()
+        expected_h = Polynomial(lp=lp_for_testing, coefs=exp_h_coefs)
+        result += [
+            (
+                next_f,
+                next_g,
+                (a_f * a_g, a_f * b_g + a_g * b_f, b_f * b_g, expected_h, exp_h_norm, exp_h_wt),
+                (obs_h_coefs, observed_h, obs_h_norm, obs_h_wt)
+            )
+        ]
+    return result
+
+
+@pytest.fixture
+def pairs_of_random_polys_and_their_products_without_const_time(pairs_ran_lin_poly_without_const_time) -> \
+        List[
+            Tuple[
+                Tuple[int, int, Polynomial],
+                Tuple[int, int, Polynomial],
+                Tuple[int, int, int, Polynomial, int, int],
+                Tuple[Dict[int, int], Polynomial, int, int]
+            ]
+        ]:
+    result = []
+    for next_pair in pairs_ran_lin_poly_without_const_time:
+        next_f, next_g = next_pair
+        a_f, b_f, f = next_f
+        a_g, b_g, g = next_g
+        a_h = (a_f * a_g) % lp_for_testing.modulus
+        b_h = (a_f * b_g + b_f * a_g) % lp_for_testing.modulus
+        c_h = (b_f * b_g) % lp_for_testing.modulus
+        exp_h_coefs = {}
+        if a_h != 0:
+            exp_h_coefs[0] = a_h
+        if b_h != 0:
+            exp_h_coefs[1] = b_h
+        if c_h != 0:
+            exp_h_coefs[2] = c_h
+        exp_h_norm = max(abs(a_h), abs(b_h), abs(c_h))
+        exp_h_wt = len(exp_h_coefs)
+        observed_h = f * g
+        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.get_coef_rep()
         expected_h = Polynomial(lp=lp_for_testing, coefs=exp_h_coefs)
         result += [
             (
@@ -744,40 +956,70 @@ def pairs_of_random_polys_and_their_products(pairs_ran_lin_poly) -> \
 
 
 # @pytest.mark.skip
-def test_polynomial_mul_small(one, pairs_of_random_polys_and_their_products):
+def test_polynomial_mul_small_with_const_time(one_with_const_time, pairs_of_random_polys_and_their_products_with_const_time):
     lp = lp_for_testing
     # First, let's make an identity polynomials and add it to itself
-    assert one * one == one
+    assert one_with_const_time * one_with_const_time == one_with_const_time
 
     # Now let's do some addition with some random linear polynomials (AND the unity)
-    for next_item in pairs_of_random_polys_and_their_products:
+    for next_item in pairs_of_random_polys_and_their_products_with_const_time:
         f_dat, g_dat, expected_h_dat, observed_h_dat = next_item
         a_f, b_f, f = f_dat
         a_g, b_g, g = g_dat
         a_h, b_h, c_h, exp_h, exp_h_norm, exp_h_wt = expected_h_dat
         obs_h_coefs, obs_h, obs_h_norm, obs_h_wt = observed_h_dat
-        assert one * f == f
-        assert f * one == f
-        assert one * g == g
-        assert g * one == g
+        assert one_with_const_time * f == f
+        assert f * one_with_const_time == f
+        assert one_with_const_time * g == g
+        assert g * one_with_const_time == g
         assert f * g == exp_h == obs_h
         assert len(obs_h_coefs) == 3
         assert 0 in obs_h_coefs
         assert 1 in obs_h_coefs
         assert 2 in obs_h_coefs
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=obs_h_coefs[0] - a_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=obs_h_coefs[1] - b_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=obs_h_coefs[2] - c_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=a_f * a_g - a_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=a_f * b_g + b_f * a_g - b_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=b_f * b_g - c_h) == 0
+        assert (obs_h_coefs[0] - a_h) % lp.modulus == 0
+        assert (obs_h_coefs[1] - b_h) % lp.modulus == 0
+        assert (obs_h_coefs[2] - c_h) % lp.modulus == 0
+        assert (a_f * a_g - a_h) % lp.modulus == 0
+        assert (a_f * b_g + b_f * a_g - b_h) % lp.modulus == 0
+        assert (b_f * b_g - c_h) % lp.modulus == 0
 
 
 # @pytest.mark.skip
-def test_polynomial_repr(some_ran_lin_polys):
-    for next_item in some_ran_lin_polys:
+def test_polynomial_mul_small_without_const_time(one_without_const_time, pairs_of_random_polys_and_their_products_without_const_time):
+    lp = lp_for_testing
+    # First, let's make an identity polynomials and add it to itself
+    assert one_without_const_time * one_without_const_time == one_without_const_time
+
+    # Now let's do some addition with some random linear polynomials (AND the unity)
+    for next_item in pairs_of_random_polys_and_their_products_without_const_time:
+        f_dat, g_dat, expected_h_dat, observed_h_dat = next_item
+        a_f, b_f, f = f_dat
+        a_g, b_g, g = g_dat
+        a_h, b_h, c_h, exp_h, exp_h_norm, exp_h_wt = expected_h_dat
+        obs_h_coefs, obs_h, obs_h_norm, obs_h_wt = observed_h_dat
+        assert one_without_const_time * f == f
+        assert f * one_without_const_time == f
+        assert one_without_const_time * g == g
+        assert g * one_without_const_time == g
+        assert f * g == exp_h == obs_h
+        assert len(obs_h_coefs) == 3
+        assert 0 in obs_h_coefs
+        assert 1 in obs_h_coefs
+        assert 2 in obs_h_coefs
+        assert (obs_h_coefs[0] - a_h) % lp.modulus == 0
+        assert (obs_h_coefs[1] - b_h) % lp.modulus == 0
+        assert (obs_h_coefs[2] - c_h) % lp.modulus == 0
+        assert (a_f * a_g - a_h) % lp.modulus == 0
+        assert (a_f * b_g + b_f * a_g - b_h) % lp.modulus == 0
+        assert (b_f * b_g - c_h) % lp.modulus == 0
+
+
+# @pytest.mark.skip
+def test_polynomial_repr_with_const_time(some_ran_lin_polys_with_const_time):
+    for next_item in some_ran_lin_polys_with_const_time:
         a, b, f = next_item
-        coef_rep, norm, wt = f.get_coef_rep(const_time_flag=False)
+        coef_rep, norm, wt = f.get_coef_rep()
         assert norm == max(abs(a), abs(b))
         if a != 0 and b != 0:
             assert wt == 2
@@ -792,26 +1034,73 @@ def test_polynomial_repr(some_ran_lin_polys):
 
 
 # @pytest.mark.skip
-def test_polynomial_reset_vals(one):
-    x = deepcopy(one)
+def test_polynomial_repr_without_const_time(some_ran_lin_polys_without_const_time):
+    for next_item in some_ran_lin_polys_without_const_time:
+        a, b, f = next_item
+        coef_rep, norm, wt = f.get_coef_rep()
+        assert norm == max(abs(a), abs(b))
+        if a != 0 and b != 0:
+            assert wt == 2
+        elif a != 0 or b != 0:
+            assert wt == 1
+        else:
+            assert wt == 0
+
+        sorted_keys = sorted(list(coef_rep.keys()))
+        sorted_coefs = [(i, coef_rep[i]) for i in sorted_keys]
+        assert str(f) == str((sorted_coefs, norm, wt))
+
+
+# @pytest.mark.skip
+def test_polynomial_reset_vals_with_const_time(one_with_const_time):
+    x = deepcopy(one_with_const_time)
     x._reset_vals(coefs={0: 2})
     assert x.ntt_representation == [2 for _ in range(lp_for_testing.n)]
     x._reset_vals(coefs={0: 1})
-    assert x == one
+    assert x == one_with_const_time
 
 
 # @pytest.mark.skip
-def test_polynomial_get_coefs(one):
+def test_polynomial_reset_vals_without_const_time(one_without_const_time):
+    x = deepcopy(one_without_const_time)
+    x._reset_vals(coefs={0: 2})
+    assert x.ntt_representation == [2 for _ in range(lp_for_testing.n)]
+    x._reset_vals(coefs={0: 1})
+    assert x == one_without_const_time
+
+
+# @pytest.mark.skip
+def test_polynomial_get_coefs_with_const_time(one_with_const_time):
     x = Polynomial(lp=lp_for_testing, coefs={1: 1})
-    f = one + x
-    assert f.get_coef_rep(const_time_flag=False) == ({0: 1, 1: 1}, 1, 2)
+    f = one_with_const_time + x
+    assert f.get_coef_rep() == ({0: 1, 1: 1}, 1, 2)
 
 
 # @pytest.mark.skip
-def test_polynomial_norm_and_weight(some_ran_lin_polys):
-    for next_item in some_ran_lin_polys:
+def test_polynomial_get_coefs_without_const_time(one_without_const_time):
+    x = Polynomial(lp=lp_for_testing, coefs={1: 1})
+    f = one_without_const_time + x
+    assert f.get_coef_rep() == ({0: 1, 1: 1}, 1, 2)
+
+
+# @pytest.mark.skip
+def test_polynomial_norm_and_weight_with_const_time(some_ran_lin_polys_with_const_time):
+    for next_item in some_ran_lin_polys_with_const_time:
         a, b, f = next_item
-        f_coefs, n, w = f.get_coef_rep(const_time_flag=False)
+        f_coefs, n, w = f.get_coef_rep()
+        assert n == max(abs(a), abs(b))
+        if a != 0 and b != 0:
+            assert w == 2
+        elif (a == 0 and b != 0) or (a != 0 and b == 0):
+            assert w == 1
+        else:
+            assert w == 0
+
+# @pytest.mark.skip
+def test_polynomial_norm_and_weight_without_const_time(some_ran_lin_polys_without_const_time):
+    for next_item in some_ran_lin_polys_without_const_time:
+        a, b, f = next_item
+        f_coefs, n, w = f.get_coef_rep()
         assert n == max(abs(a), abs(b))
         if a != 0 and b != 0:
             assert w == 2
@@ -822,21 +1111,35 @@ def test_polynomial_norm_and_weight(some_ran_lin_polys):
 
 
 # @pytest.mark.skip
-def test_rand_poly():
+def test_rand_poly_with_const_time():
     f = random_polynomial(
         secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT,
         dist_pars=small_dist_pars, num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
         bits_to_decode=bits_to_decode_for_testing
     )
     assert isinstance(f, Polynomial)
-    f_coefs, n, w = f.get_coef_rep(const_time_flag=False)
+    f_coefs, n, w = f.get_coef_rep()
+    assert n <= small_dist_pars['bd'] and w <= small_dist_pars['bd']
+    assert max(abs(f_coefs[i]) for i in f_coefs) <= n
+    assert len(f_coefs) <= w
+
+
+# @pytest.mark.skip
+def test_rand_poly_without_const_time():
+    f = random_polynomial(
+        secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT,
+        dist_pars=small_dist_pars, num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+        bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+    )
+    assert isinstance(f, Polynomial)
+    f_coefs, n, w = f.get_coef_rep()
     assert n <= small_dist_pars['bd'] and w <= small_dist_pars['bd']
     assert max(abs(f_coefs[i]) for i in f_coefs) <= n
     assert len(f_coefs) <= w
 
 
 @pytest.fixture
-def some_random_polys_for_a_vector() -> List[Polynomial]:
+def some_random_polys_for_a_vector_with_const_time() -> List[Polynomial]:
     lp: LatticeParameters = lp_for_testing
     return [random_polynomial(
         secpar=secpar4testing, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
@@ -845,12 +1148,22 @@ def some_random_polys_for_a_vector() -> List[Polynomial]:
     ) for _ in range(lp.length)]
 
 
-# @pytest.mark.skip
-def test_polynomial_vector_init(some_random_polys_for_a_vector):
+@pytest.fixture
+def some_random_polys_for_a_vector_without_const_time() -> List[Polynomial]:
     lp: LatticeParameters = lp_for_testing
-    assert PolynomialVector(lp=lp, entries=some_random_polys_for_a_vector)
-    v = PolynomialVector(lp=lp, entries=some_random_polys_for_a_vector)
-    tmp = v.get_coef_rep(const_time_flag=False)
+    return [random_polynomial(
+        secpar=secpar4testing, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+        bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+    ) for _ in range(lp.length)]
+
+
+# @pytest.mark.skip
+def test_polynomial_vector_init_with_const_time(some_random_polys_for_a_vector_with_const_time):
+    lp: LatticeParameters = lp_for_testing
+    assert PolynomialVector(lp=lp, entries=some_random_polys_for_a_vector_with_const_time)
+    v = PolynomialVector(lp=lp, entries=some_random_polys_for_a_vector_with_const_time)
+    tmp = v.get_coef_rep()
     assert max(i[1] for i in tmp) <= lp.halfmod // 2
     assert max(i[2] for i in tmp) <= lp.degree
     assert random_polynomialvector(
@@ -860,26 +1173,59 @@ def test_polynomial_vector_init(some_random_polys_for_a_vector):
     )
 
 
-@pytest.fixture
-def some_random_polynomialvector(some_random_polys_for_a_vector) -> PolynomialVector:
-    return PolynomialVector(lp=lp_for_testing, entries=some_random_polys_for_a_vector)
+# @pytest.mark.skip
+def test_polynomial_vector_init_without_const_time(some_random_polys_for_a_vector_without_const_time):
+    lp: LatticeParameters = lp_for_testing
+    assert PolynomialVector(lp=lp, entries=some_random_polys_for_a_vector_without_const_time, const_time_flag=False)
+    v = PolynomialVector(lp=lp, entries=some_random_polys_for_a_vector_without_const_time, const_time_flag=False)
+    tmp = v.get_coef_rep()
+    assert max(i[1] for i in tmp) <= lp.halfmod // 2
+    assert max(i[2] for i in tmp) <= lp.degree
+    assert random_polynomialvector(
+        secpar=secpar4testing, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+        bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+    )
 
 
 @pytest.fixture
-def some_random_polynomialvectors(some_random_polys_for_a_vector) -> List[PolynomialVector]:
-    return [PolynomialVector(lp=lp_for_testing, entries=some_random_polys_for_a_vector) for _ in
+def some_random_polynomialvector_with_const_time(some_random_polys_for_a_vector_with_const_time) -> PolynomialVector:
+    return PolynomialVector(lp=lp_for_testing, entries=some_random_polys_for_a_vector_with_const_time)
+
+@pytest.fixture
+def some_random_polynomialvector_without_const_time(some_random_polys_for_a_vector_without_const_time) -> PolynomialVector:
+    return PolynomialVector(lp=lp_for_testing, entries=some_random_polys_for_a_vector_without_const_time, const_time_flag=False)
+
+
+@pytest.fixture
+def some_random_polynomialvectors_with_const_time(some_random_polys_for_a_vector_with_const_time) -> List[PolynomialVector]:
+    return [PolynomialVector(lp=lp_for_testing, entries=some_random_polys_for_a_vector_with_const_time) for _ in
+            range(sample_size_for_random_tests)]
+
+@pytest.fixture
+def some_random_polynomialvectors_without_const_time(some_random_polys_for_a_vector_without_const_time) -> List[PolynomialVector]:
+    return [PolynomialVector(lp=lp_for_testing, entries=some_random_polys_for_a_vector_without_const_time, const_time_flag=False) for _ in
             range(sample_size_for_random_tests)]
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_eq(some_random_polys_for_a_vector, some_random_polynomialvector):
+def test_polynomial_vector_eq_with_const_time(some_random_polys_for_a_vector_with_const_time,
+                                              some_random_polynomialvector_with_const_time):
     lp: LatticeParameters = lp_for_testing
-    v = PolynomialVector(lp=lp, entries=deepcopy(some_random_polys_for_a_vector))
-    assert v == some_random_polynomialvector
+    v = PolynomialVector(lp=lp, entries=deepcopy(some_random_polys_for_a_vector_with_const_time))
+    assert v == some_random_polynomialvector_with_const_time
+
+
+# @pytest.mark.skip
+def test_polynomial_vector_eq_without_const_time(some_random_polys_for_a_vector_without_const_time,
+                                              some_random_polynomialvector_without_const_time):
+    lp: LatticeParameters = lp_for_testing
+    v = PolynomialVector(lp=lp, entries=deepcopy(some_random_polys_for_a_vector_without_const_time), const_time_flag=False)
+    assert v == some_random_polynomialvector_without_const_time
 
 
 @pytest.fixture
-def some_random_polynomialvector_pairs_sums() -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
+def some_random_polynomialvector_pairs_sums_with_const_time() -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
     result = []
     while len(result) < sample_size_for_random_tests:
         f = random_polynomialvector(
@@ -898,7 +1244,26 @@ def some_random_polynomialvector_pairs_sums() -> List[Tuple[PolynomialVector, Po
 
 
 @pytest.fixture
-def some_random_polynomialvector_pairs_diffs() -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
+def some_random_polynomialvector_pairs_sums_without_const_time() -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
+    result = []
+    while len(result) < sample_size_for_random_tests:
+        f = random_polynomialvector(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        )
+        g = random_polynomialvector(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        )
+        h = f + g
+        result += [(f, g, h)]
+    return result
+
+
+@pytest.fixture
+def some_random_polynomialvector_pairs_diffs_with_const_time() -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
     result = []
     while len(result) < sample_size_for_random_tests:
         f = random_polynomialvector(
@@ -916,11 +1281,30 @@ def some_random_polynomialvector_pairs_diffs() -> List[Tuple[PolynomialVector, P
     return result
 
 
+@pytest.fixture
+def some_random_polynomialvector_pairs_diffs_without_const_time() -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
+    result = []
+    while len(result) < sample_size_for_random_tests:
+        f = random_polynomialvector(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        )
+        g = random_polynomialvector(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        )
+        h = f - g
+        result += [(f, g, h)]
+    return result
+
+
 # @pytest.mark.skip
-def test_polynomial_vector_add(some_random_polynomialvector_pairs_sums):
+def test_polynomial_vector_add_with_const_time(some_random_polynomialvector_pairs_sums_with_const_time):
     # TODO: Rewrite
     lp: LatticeParameters = lp_for_testing
-    for next_item in some_random_polynomialvector_pairs_sums:
+    for next_item in some_random_polynomialvector_pairs_sums_with_const_time:
         f, g, observed_h = next_item
         for i, val in enumerate(zip(f.entries, g.entries, observed_h.entries)):
             ff, gg, hh = val
@@ -929,9 +1313,9 @@ def test_polynomial_vector_add(some_random_polynomialvector_pairs_sums):
             assert all(
                 cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=diff[j]) == 0 for j in range(lp.degree)
             )
-        observed_h_coefs_and_norms_and_wts = observed_h.get_coef_rep(const_time_flag=False)
-        f_coefs_and_norms_and_wts = f.get_coef_rep(const_time_flag=False)
-        g_coefs_and_norms_and_wts = g.get_coef_rep(const_time_flag=False)
+        observed_h_coefs_and_norms_and_wts = observed_h.get_coef_rep()
+        f_coefs_and_norms_and_wts = f.get_coef_rep()
+        g_coefs_and_norms_and_wts = g.get_coef_rep()
         for i, val in enumerate(zip(
                 f_coefs_and_norms_and_wts, g_coefs_and_norms_and_wts, observed_h_coefs_and_norms_and_wts
         )):
@@ -967,16 +1351,66 @@ def test_polynomial_vector_add(some_random_polynomialvector_pairs_sums):
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_sub(some_random_polynomialvector_pairs_diffs):
+def test_polynomial_vector_add_without_const_time(some_random_polynomialvector_pairs_sums_without_const_time):
+    # TODO: Rewrite
     lp: LatticeParameters = lp_for_testing
-    for next_item in some_random_polynomialvector_pairs_diffs:
+    for next_item in some_random_polynomialvector_pairs_sums_without_const_time:
+        f, g, observed_h = next_item
+        for i, val in enumerate(zip(f.entries, g.entries, observed_h.entries)):
+            ff, gg, hh = val
+            diff = [ff.ntt_representation[j] + gg.ntt_representation[j] for j in range(lp.degree)]
+            diff = [diff[j] - hh.ntt_representation[j] for j in range(lp.degree)]
+            assert all(
+                cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=diff[j]) == 0 for j in range(lp.degree)
+            )
+        observed_h_coefs_and_norms_and_wts = observed_h.get_coef_rep()
+        f_coefs_and_norms_and_wts = f.get_coef_rep()
+        g_coefs_and_norms_and_wts = g.get_coef_rep()
+        for i, val in enumerate(zip(
+                f_coefs_and_norms_and_wts, g_coefs_and_norms_and_wts, observed_h_coefs_and_norms_and_wts
+        )):
+            f_dat, g_dat, obs_h_dat = val
+            f_coefs, f_norm, f_wt = f_dat
+            g_coefs, g_norm, g_wt = g_dat
+            expected_h_coefs: Dict[int, int] = deepcopy(f_coefs)
+            obs_h_coefs, obs_h_norm, obs_h_wt = obs_h_dat
+            for j in g_coefs:
+                if j in expected_h_coefs:
+                    diff = expected_h_coefs[j] + g_coefs[j]
+                    expected_h_coefs[j] = cent(
+                        q=lp_for_testing.modulus,
+                        val=diff, halfmod=lp_for_testing.halfmod,
+                        logmod=lp_for_testing.logmod
+                    )
+                else:
+                    expected_h_coefs[j] = g_coefs[j]
+            expected_h_coefs = {i: expected_h_coefs[i] for i in expected_h_coefs if expected_h_coefs[i] != 0}
+            expected_h_norm: int = max(abs(expected_h_coefs[i]) for i in expected_h_coefs)
+            expected_h_wt: int = len(expected_h_coefs)
+            assert expected_h_wt == obs_h_wt
+            assert expected_h_norm == obs_h_norm
+            assert sorted(list(expected_h_coefs.keys())) == sorted(list(obs_h_coefs.keys()))
+            assert all(
+                0 == cent(
+                    q=lp_for_testing.modulus,
+                    val=expected_h_coefs[i] - obs_h_coefs[i],
+                    halfmod=lp_for_testing.halfmod,
+                    logmod=lp_for_testing.logmod
+                ) for i in expected_h_coefs
+            )
+
+
+# @pytest.mark.skip
+def test_polynomial_vector_sub_with_const_time(some_random_polynomialvector_pairs_diffs_with_const_time):
+    lp: LatticeParameters = lp_for_testing
+    for next_item in some_random_polynomialvector_pairs_diffs_with_const_time:
         f, g, observed_h = next_item
         observed_h_coefs_and_norms_and_weights = [
-            i.get_coef_rep(const_time_flag=False) for i in observed_h.entries
+            i.get_coef_rep() for i in observed_h.entries
         ]
         for i in range(lp.length):
-            f_coefs, f_norm, f_wt = f.entries[i].get_coef_rep(const_time_flag=False)
-            g_coefs, g_norm, g_wt = g.entries[i].get_coef_rep(const_time_flag=False)
+            f_coefs, f_norm, f_wt = f.entries[i].get_coef_rep()
+            g_coefs, g_norm, g_wt = g.entries[i].get_coef_rep()
             obs_h_coefs, obs_h_norm, obs_h_wt = observed_h_coefs_and_norms_and_weights[i]
             exp_h_coefs = deepcopy(f_coefs)
             for j in g_coefs:
@@ -1004,11 +1438,61 @@ def test_polynomial_vector_sub(some_random_polynomialvector_pairs_diffs):
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_mul(one, some_random_polynomialvectors):
+def test_polynomial_vector_sub_without_const_time(some_random_polynomialvector_pairs_diffs_without_const_time):
+    lp: LatticeParameters = lp_for_testing
+    for next_item in some_random_polynomialvector_pairs_diffs_without_const_time:
+        f, g, observed_h = next_item
+        observed_h_coefs_and_norms_and_weights = [
+            i.get_coef_rep() for i in observed_h.entries
+        ]
+        for i in range(lp.length):
+            f_coefs, f_norm, f_wt = f.entries[i].get_coef_rep()
+            g_coefs, g_norm, g_wt = g.entries[i].get_coef_rep()
+            obs_h_coefs, obs_h_norm, obs_h_wt = observed_h_coefs_and_norms_and_weights[i]
+            exp_h_coefs = deepcopy(f_coefs)
+            for j in g_coefs:
+                if j in exp_h_coefs:
+                    diff = exp_h_coefs[j] - g_coefs[j]
+                    exp_h_coefs[j] = cent(
+                        q=lp_for_testing.modulus,
+                        val=diff, halfmod=lp_for_testing.halfmod,
+                        logmod=lp_for_testing.logmod
+                    )
+                else:
+                    exp_h_coefs[j] = -g_coefs[j]
+            exp_h_coefs = {i: exp_h_coefs[i] for i in exp_h_coefs if exp_h_coefs[i] != 0}
+            exp_h_norm = max(abs(exp_h_coefs[i]) for i in exp_h_coefs)
+            exp_h_wt = len(exp_h_coefs)
+
+            assert obs_h_norm == exp_h_norm
+            assert obs_h_wt == exp_h_wt
+            assert sorted(list(obs_h_coefs.keys())) == sorted(list(exp_h_coefs.keys()))
+            for j in obs_h_coefs:
+                diff = obs_h_coefs[j] - exp_h_coefs[j]
+                assert 0 == cent(
+                    q=lp_for_testing.modulus, val=diff, halfmod=lp_for_testing.halfmod, logmod=lp_for_testing.logmod
+                )
+
+
+# @pytest.mark.skip
+def test_polynomial_vector_mul_with_const_time(one_with_const_time, some_random_polynomialvectors_with_const_time):
     # tests the dot product
     lp: LatticeParameters = lp_for_testing
-    all_ones: PolynomialVector = PolynomialVector(lp=lp, entries=[deepcopy(one) for _ in range(lp.length)])
-    for v in some_random_polynomialvectors:
+    all_ones: PolynomialVector = PolynomialVector(lp=lp, entries=[deepcopy(one_with_const_time) for _ in range(lp.length)])
+    for v in some_random_polynomialvectors_with_const_time:
+        expected_sum: Polynomial = sum(x for x in v.entries)
+        observed_sum: Polynomial = all_ones * v
+        assert observed_sum == expected_sum
+        observed_sum: Polynomial = v * all_ones
+        assert observed_sum == expected_sum
+
+
+# @pytest.mark.skip
+def test_polynomial_vector_mul_without_const_time(one_without_const_time, some_random_polynomialvectors_without_const_time):
+    # tests the dot product
+    lp: LatticeParameters = lp_for_testing
+    all_ones: PolynomialVector = PolynomialVector(lp=lp, entries=[deepcopy(one_without_const_time) for _ in range(lp.length)], const_time_flag=False)
+    for v in some_random_polynomialvectors_without_const_time:
         expected_sum: Polynomial = sum(x for x in v.entries)
         observed_sum: Polynomial = all_ones * v
         assert observed_sum == expected_sum
@@ -1017,7 +1501,7 @@ def test_polynomial_vector_mul(one, some_random_polynomialvectors):
 
 
 @pytest.fixture
-def some_random_linear_polynomialvectors() -> list:
+def some_random_linear_polynomialvectors_with_const_time() -> list:
     result = []
     while len(result) < sample_size_for_random_tests:
         next_result_entry = []
@@ -1036,9 +1520,55 @@ def some_random_linear_polynomialvectors() -> list:
 
 
 @pytest.fixture
-def expected_polynomialvector_rep(some_random_linear_polynomialvectors) -> List[str]:
+def some_random_linear_polynomialvectors_without_const_time() -> list:
     result = []
-    for next_polynomialvector_data in some_random_linear_polynomialvectors:
+    while len(result) < sample_size_for_random_tests:
+        next_result_entry = []
+        entries = []
+        while len(entries) < lp_for_testing.length:
+            a: int = (2 * randbits(1) - 1) * (randbelow(lp_for_testing.halfmod) + 1)
+            b: int = (2 * randbits(1) - 1) * (randbelow(lp_for_testing.halfmod) + 1)
+            if a != 0 or b != 0:
+                next_poly: Polynomial = Polynomial(lp=lp_for_testing, coefs={0: a, 1: b}, const_time_flag=False)
+                next_result_entry += [(a, b, next_poly)]
+                entries += [next_poly]
+        next_polynomialvector = PolynomialVector(lp=lp_for_testing, entries=entries, const_time_flag=False)
+        next_result_entry += [next_polynomialvector]
+        result += [next_result_entry]
+    return result
+
+
+@pytest.fixture
+def expected_polynomialvector_rep_with_const_time(some_random_linear_polynomialvectors_with_const_time) -> List[str]:
+    result = []
+    for next_polynomialvector_data in some_random_linear_polynomialvectors_with_const_time:
+        next_rep: str = '['
+        the_polynomialvector = next_polynomialvector_data[-1]
+        for i, val in enumerate(zip(the_polynomialvector.entries, next_polynomialvector_data[:-1])):
+            # the_next_poly = val[0]
+            next_tuple = val[1]
+            a, b, also_the_next_poly = next_tuple
+            the_coefs = {}
+            if a != 0:
+                the_coefs[0] = a
+            if b != 0:
+                the_coefs[1] = b
+            the_norm = max(abs(a), abs(b))
+            the_wt = len(the_coefs)
+            # assert the_next_poly.get_coef_rep() == the_coefs, the_norm, the_wt
+            # assert also_the_next_poly == the_next_poly
+            the_coefs_sorted_keys = sorted(list(the_coefs.keys()))
+            sorted_coefs = [(i, the_coefs[i]) for i in the_coefs_sorted_keys]
+            next_rep += str((sorted_coefs, the_norm, the_wt)) + ', '
+        next_rep = next_rep[:-2] + ']'
+        result += [next_rep]
+    return result
+
+
+@pytest.fixture
+def expected_polynomialvector_rep_without_const_time(some_random_linear_polynomialvectors_without_const_time) -> List[str]:
+    result = []
+    for next_polynomialvector_data in some_random_linear_polynomialvectors_without_const_time:
         next_rep: str = '['
         the_polynomialvector = next_polynomialvector_data[-1]
         for i, val in enumerate(zip(the_polynomialvector.entries, next_polynomialvector_data[:-1])):
@@ -1063,14 +1593,23 @@ def expected_polynomialvector_rep(some_random_linear_polynomialvectors) -> List[
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_repr(some_random_linear_polynomialvectors, expected_polynomialvector_rep):
-    for next_pair in zip(some_random_linear_polynomialvectors, expected_polynomialvector_rep):
+def test_polynomial_vector_repr_with_const_time(some_random_linear_polynomialvectors_with_const_time,
+                                                expected_polynomialvector_rep_with_const_time):
+    for next_pair in zip(some_random_linear_polynomialvectors_with_const_time, expected_polynomialvector_rep_with_const_time):
         next_random_linear_polynomialvector, next_expected_rep = next_pair
         assert str(next_random_linear_polynomialvector[-1]) == next_expected_rep
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_pow():
+def test_polynomial_vector_repr_without_const_time(some_random_linear_polynomialvectors_without_const_time,
+                                                expected_polynomialvector_rep_without_const_time):
+    for next_pair in zip(some_random_linear_polynomialvectors_without_const_time, expected_polynomialvector_rep_without_const_time):
+        next_random_linear_polynomialvector, next_expected_rep = next_pair
+        assert str(next_random_linear_polynomialvector[-1]) == next_expected_rep
+
+
+# @pytest.mark.skip
+def test_polynomial_vector_pow_with_const_time():
     for k in range(sample_size_for_random_tests):
         v: Polynomial = random_polynomial(
             secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
@@ -1087,16 +1626,34 @@ def test_polynomial_vector_pow():
         observed_scaled_vector = u ** v
         assert expected_scaled_vector == observed_scaled_vector
 
+# @pytest.mark.skip
+def test_polynomial_vector_pow_without_const_time():
+    for k in range(sample_size_for_random_tests):
+        v: Polynomial = random_polynomial(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        )
+        u: PolynomialVector = random_polynomialvector(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        )
+        expected_scaled_vector: PolynomialVector = deepcopy(u)
+        expected_scaled_vector.entries = [i * v for i in expected_scaled_vector.entries]
+        observed_scaled_vector = u ** v
+        assert expected_scaled_vector == observed_scaled_vector
+
 
 # @pytest.mark.skip
-def test_polynomialvector_coefficient_representation_and_norm_and_weight():
+def test_polynomialvector_coefficient_representation_and_norm_and_weight_with_const_time():
     f: PolynomialVector = random_polynomialvector(
         secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
         num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
         bits_to_decode=bits_to_decode_for_testing
     )
     assert isinstance(f, PolynomialVector)
-    result = f.get_coef_rep(const_time_flag=False)
+    result = f.get_coef_rep()
     for i in result:
         coef_rep, n, w = i
         assert n <= 7176
@@ -1106,14 +1663,48 @@ def test_polynomialvector_coefficient_representation_and_norm_and_weight():
 
 
 # @pytest.mark.skip
-def test_random_polynomialvector():
+def test_polynomialvector_coefficient_representation_and_norm_and_weight_without_const_time():
+    f: PolynomialVector = random_polynomialvector(
+        secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+        bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+    )
+    assert isinstance(f, PolynomialVector)
+    result = f.get_coef_rep()
+    for i in result:
+        coef_rep, n, w = i
+        assert n <= 7176
+        assert w <= 384
+        assert w == len(coef_rep)
+        assert n == max(abs(coef_rep[i]) for i in coef_rep)
+
+
+# @pytest.mark.skip
+def test_random_polynomialvector_with_const_time():
     f: PolynomialVector = random_polynomialvector(
         secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
         num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
         bits_to_decode=bits_to_decode_for_testing
     )
     assert isinstance(f, PolynomialVector)
-    results = f.get_coef_rep(const_time_flag=False)
+    results = f.get_coef_rep()
+    for i in results:
+        coef_rep, n, w = i
+        assert n <= 7176
+        assert w <= 384
+        assert len(coef_rep) == w
+        assert n == max(abs(coef_rep[i]) for i in coef_rep)
+
+
+# @pytest.mark.skip
+def test_random_polynomialvector_without_const_time():
+    f: PolynomialVector = random_polynomialvector(
+        secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+        bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+    )
+    assert isinstance(f, PolynomialVector)
+    results = f.get_coef_rep()
     for i in results:
         coef_rep, n, w = i
         assert n <= 7176
@@ -1151,7 +1742,7 @@ def test_decode_bitstring_to_indices():
     # but the remaining indices are [1, 2, 3, 4, 5, 6, 7]
     # to get 3 out of this, we need to access index 2!!!
     # we need an 11-bit integer == 2 mod 7. for fun, let's use 2 + 2**6 * 7 = 450 -> '00111000010`
-    # third index is 6, requires ceil(log2(8)) + secpar = 11 bits since we already picked two indices
+    # third index is 6, requires ceil(log2(8)) + secpar = 11 bits since we already picked two_with_const_time indices
     # but the remaining indices are [1, 2, 4, 5, 6, 7]
     # to get 6 out of this, we need to access index 4
     # we need an 11-bit integer == 4 mod 6. for fun, let's use 4 + 2**5 * 6 = 196 -> '00011000100'
@@ -1165,13 +1756,6 @@ def test_decode_bitstring_to_indices():
         secpar=secpar4testing, lp=lp, num_coefs=dist_pars['wt'], val=val, bits_to_indices=bits_to_indices_for_this_test
     )
     assert expected_result == observed_result
-
-
-# For coefficients: length ceil(log2(bound)) + 1 + secpar
-# for signum_bit in range(2):
-#     for magnitude_minus_one in range(bound):
-#         expected_result = (2*signum_bit - 1)*(1 + magnitude_minus_one)
-#         bitstring = str(signum_bit) + bin(magnitude_minus_one)[2:].zfill(bits_to_decode-1)
 
 
 # @pytest.mark.skip
