@@ -38,7 +38,7 @@ from math import ceil, sqrt, log2
 from copy import deepcopy
 from secrets import randbits
 from hashlib import shake_256 as shake
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 
 
 def is_prime(val: int) -> bool:
@@ -107,7 +107,7 @@ def is_prim_rou(modulus: int, degree: int, val: int) -> bool:
     return all(val ** k % modulus != 1 for k in range(1, 2 * degree)) and val ** (2 * degree) % modulus == 1
 
 
-def get_prim_rou_and_rou_inv(modulus: int, degree: int) -> None | Tuple[int, int]:
+def get_prim_rou_and_rou_inv(modulus: int, degree: int) -> Union[None, Tuple[int, int]]:
     """
     Compute a primitive 2d-th root of unity modulo q and its inverse. Raises a ValueError if (d, q) are not NTT-
     friendly pair. Works by finding the first (in natural number order) primitive root of unity and its inverse.
