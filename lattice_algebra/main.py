@@ -229,7 +229,7 @@ def make_zetas_and_invs(q: int, d: int, n: int, lgn: int) -> Tuple[List[int], Li
     powers: List[int] = [n // (2 ** (s + 1)) for s in range(lgn)]
     zeta, zeta_inv = get_prim_rou_and_rou_inv(q, d)
     left: List[int] = [int(zeta ** i) % q for i in powers]
-    left = [i if i <= q//2 else i - q for i in left]
+    left = [i if i <= q // 2 else i - q for i in left]
     right: List[int] = [int(zeta_inv ** i) % q for i in powers]
     right = [i if i <= q // 2 else i - q for i in right]
     return left, right
@@ -285,10 +285,10 @@ def ntt(q: int, zetas: List[int], zetas_inv: List[int], inv_flag: bool, halfmod:
                     bit_rev_x[k + j + m // 2]: int = cent(q=q, halfmod=halfmod, logmod=logmod, val=u - t)
                 else:
                     bit_rev_x[k + j]: int = (u + t) % q
-                    if bit_rev_x[k + j] > q//2:
+                    if bit_rev_x[k + j] > q // 2:
                         bit_rev_x[k + j] = bit_rev_x[k + j] - q
                     bit_rev_x[k + j + m // 2]: int = (u - t) % q
-                    if bit_rev_x[k + j + m // 2] > q//2:
+                    if bit_rev_x[k + j + m // 2] > q // 2:
                         bit_rev_x[k + j + m // 2] = bit_rev_x[k + j + m // 2] - q
                 w *= this_zeta
     if inv_flag:
@@ -299,7 +299,7 @@ def ntt(q: int, zetas: List[int], zetas_inv: List[int], inv_flag: bool, halfmod:
             bit_rev_x: List[int] = [cent(q=q, halfmod=halfmod, logmod=logmod, val=(n_inv * i)) for i in bit_rev_x]
         else:
             bit_rev_x: List[int] = [(n_inv * i) % q for i in bit_rev_x]
-            bit_rev_x = [i if i <= q//2 else i - q for i in bit_rev_x]
+            bit_rev_x = [i if i <= q // 2 else i - q for i in bit_rev_x]
     return bit_rev_x
 
 
@@ -425,7 +425,7 @@ UNIFORM_INFINITY_WEIGHT: str = 'inf,wt,unif'
 
 
 def decode2coef_inf_unif(secpar: int, lp: LatticeParameters, val: str, bits_to_decode: int,
-                         dist_pars: dict[str, int]) -> int:
+                         dist_pars: Dict[str, int]) -> int:
     if bits_to_decode < 1:
         raise ValueError('Cannot decode2coef_inf_unif without a positive integer number of bits required to decode.')
     elif 'bd' not in dist_pars or not isinstance(dist_pars['bd'], int) or not (1 <= dist_pars['bd'] <= lp.modulus // 2):
@@ -450,7 +450,7 @@ def decode2coef_inf_unif(secpar: int, lp: LatticeParameters, val: str, bits_to_d
     return sign * magnitude
 
 
-def decode2coef(secpar: int, lp: LatticeParameters, val: str, distribution: str, dist_pars: dict[str, int],
+def decode2coef(secpar: int, lp: LatticeParameters, val: str, distribution: str, dist_pars: Dict[str, int],
                 bits_to_decode: int) -> int:
     """
     Decode an input string x to a coefficient in [-bd, -bd+1, ...,-2, -1, 1, 2, ..., bd-1, bd] with bias O(2**-secpar),
@@ -478,7 +478,7 @@ def decode2coef(secpar: int, lp: LatticeParameters, val: str, distribution: str,
     :param distribution: String code indicating which distribution to use
     :type distribution: str
     :param dist_pars: Distribution parameters
-    :type dist_pars: dict[str, int]
+    :type dist_pars: Dict[str, int]
     :param bits_to_decode: Bits necessary to unbiasedly sample an integer modulo the modulus.
     :type bits_to_decode: int
 
@@ -495,9 +495,9 @@ def decode2coef(secpar: int, lp: LatticeParameters, val: str, distribution: str,
 
 
 def decode2coefs(
-        secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int],
+        secpar: int, lp: LatticeParameters, distribution: str, dist_pars: Dict[str, int],
         val: str, num_coefs: int, bits_to_decode: int
-) -> list[int]:
+) -> List[int]:
     """
     Decode an input string x to a list of integer coefficients. In general, breaks the input string into blocks of
     1 + ceil(log2(bd)) + secpar bits each, and then merely calls decode2coef on each block. We do handle a weird edge
@@ -511,7 +511,7 @@ def decode2coefs(
     :param distribution: String code describing the distribution
     :type distribution: str
     :param dist_pars: Dictionary containing distribution parameters
-    :type dist_pars: dict[str, int]
+    :type dist_pars: Dict[str, int]
     :param val: Input value/bitstring to decode.
     :type val: str
     :param num_coefs: Number of coefficients to sample.
@@ -539,7 +539,7 @@ def decode2coefs(
     return result
 
 
-def decode2indices(secpar: int, lp: LatticeParameters, num_coefs: int, val: str, bits_to_indices: int) -> list[int]:
+def decode2indices(secpar: int, lp: LatticeParameters, num_coefs: int, val: str, bits_to_indices: int) -> List[int]:
     """
     Decode input string x to a list of distinct, uniformly and independently sampled integer indices in [0, 1, ..., d-1]
     with constant weight equal to the input weight, wt, and with bias O(2**-secpar), if possible, and raise a ValueError
@@ -604,8 +604,8 @@ def decode2indices(secpar: int, lp: LatticeParameters, num_coefs: int, val: str,
     return result
 
 
-def decode2polycoefs(secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int], val: str,
-                     num_coefs: int, bits_to_indices: int, bits_to_decode: int) -> dict[int, int]:
+def decode2polycoefs(secpar: int, lp: LatticeParameters, distribution: str, dist_pars: Dict[str, int], val: str,
+                     num_coefs: int, bits_to_indices: int, bits_to_decode: int) -> Dict[int, int]:
     """
     Decode an input string x to a dictionary with integer keys and values, suitable for use in creating a Polynomial
     object with norm bound bd and weight wt. We use the first ceil(log2(d)) + (wt-1) + (ceil(log2(d)) + secpar) bits to
@@ -655,7 +655,7 @@ def decode2polycoefs(secpar: int, lp: LatticeParameters, distribution: str, dist
 
 
 def get_gen_bytes_per_poly_inf_wt_unif(
-        secpar: int, lp: LatticeParameters, dist_pars: dict[str, int], num_coefs: int
+        secpar: int, lp: LatticeParameters, dist_pars: Dict[str, int], num_coefs: int
 ) -> int:
     if secpar < 1:
         raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif without an integer security parameter.')
@@ -664,13 +664,15 @@ def get_gen_bytes_per_poly_inf_wt_unif(
     elif not isinstance(dist_pars['bd'], int):
         raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif without an integer bound in dist_pars')
     elif dist_pars['bd'] < 1 or dist_pars['bd'] > lp.modulus // 2:
-        raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif without an integer bound on [1, 2, ..., lp.modulus // 2].')
+        raise ValueError(
+            'Cannot get_gen_bytes_per_poly_inf_wt_unif without an integer bound on [1, 2, ..., lp.modulus // 2].')
     elif 'wt' not in dist_pars:
         raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif without a weight in dist_pars.')
     elif not isinstance(dist_pars['wt'], int):
         raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif without an integer weight in dist_pars.')
     elif dist_pars['wt'] < 1 or dist_pars['wt'] > lp.degree:
-        raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif without an integer weight on [1, 2, .., lp.degree - 1].')
+        raise ValueError(
+            'Cannot get_gen_bytes_per_poly_inf_wt_unif without an integer weight on [1, 2, .., lp.degree - 1].')
     elif dist_pars['wt'] != num_coefs:
         raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif with num_coefs != weight.')
     result = int(log2(lp.degree))
@@ -681,7 +683,7 @@ def get_gen_bytes_per_poly_inf_wt_unif(
     return ceil(result / 8)
 
 
-def get_gen_bytes_per_poly(secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int],
+def get_gen_bytes_per_poly(secpar: int, lp: LatticeParameters, distribution: str, dist_pars: Dict[str, int],
                            num_coefs: int, bits_to_indices: int, bits_to_decode: int) -> int:
     """
     Compute bits required to decode a random bitstring to a polynomial of a certain weight and bound given some lattice
@@ -775,7 +777,7 @@ class Polynomial(object):
     const_time_flag: bool
     ntt_representation: List[int]
 
-    def __init__(self, lp: LatticeParameters, coefs: dict[int, int], const_time_flag: bool = True):
+    def __init__(self, lp: LatticeParameters, coefs: Dict[int, int], const_time_flag: bool = True):
         """
         Initialize a polynomial object by passing in a LatticeParameters object and coefs, which is a Dict[int, int]
         where keys are monomial exponents and values are coefficients.
@@ -833,7 +835,7 @@ class Polynomial(object):
                 (x + y) % self.lp.modulus for x, y in zip(result.ntt_representation, other.ntt_representation)
             ]
             result.ntt_representation = [
-                x if x <= self.lp.modulus//2 else x - self.lp.modulus for x in result.ntt_representation
+                x if x <= self.lp.modulus // 2 else x - self.lp.modulus for x in result.ntt_representation
             ]
         return result
 
@@ -872,7 +874,7 @@ class Polynomial(object):
                 (x - y) % self.lp.modulus for x, y in zip(result.ntt_representation, other.ntt_representation)
             ]
             result.ntt_representation = [
-                x if x <= self.lp.modulus//2 else x - self.lp.modulus for x in result.ntt_representation
+                x if x <= self.lp.modulus // 2 else x - self.lp.modulus for x in result.ntt_representation
             ]
         return result
 
@@ -898,7 +900,7 @@ class Polynomial(object):
                 (x * y) % self.lp.modulus for x, y in zip(result.ntt_representation, other.ntt_representation)
             ]
             result.ntt_representation = [
-                x if x <= self.lp.modulus//2 else x - self.lp.modulus for x in result.ntt_representation
+                x if x <= self.lp.modulus // 2 else x - self.lp.modulus for x in result.ntt_representation
             ]
         return result
 
@@ -986,7 +988,7 @@ class Polynomial(object):
 
 
 def decode2poly(
-        secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int], val: str,
+        secpar: int, lp: LatticeParameters, distribution: str, dist_pars: Dict[str, int], val: str,
         num_coefs: int, bits_to_indices: int, bits_to_decode: int, const_time_flag: bool = True
 ) -> Polynomial:
     return Polynomial(
@@ -1005,7 +1007,7 @@ def decode2poly(
     )
 
 
-def hash2polynomial(secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int], salt: str,
+def hash2polynomial(secpar: int, lp: LatticeParameters, distribution: str, dist_pars: Dict[str, int], salt: str,
                     msg: str, num_coefs: int, bits_to_indices: int, bits_to_decode: int,
                     const_time_flag: bool = True) -> Polynomial:
     """
@@ -1039,7 +1041,7 @@ def hash2polynomial(secpar: int, lp: LatticeParameters, distribution: str, dist_
     #     secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, num_coefs=num_coefs,
     #     bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
     # )
-    num_bytes_for_hashing: int = ceil((num_coefs * bits_to_decode + bits_to_indices)/8)
+    num_bytes_for_hashing: int = ceil((num_coefs * bits_to_decode + bits_to_indices) / 8)
     val: str = binary_digest(msg, num_bytes_for_hashing, salt)
     coefs: Dict[int, int] = decode2polycoefs(
         secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, val=val, num_coefs=num_coefs,
@@ -1049,7 +1051,7 @@ def hash2polynomial(secpar: int, lp: LatticeParameters, distribution: str, dist_
 
 
 def random_polynomial(
-        secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int], num_coefs: int,
+        secpar: int, lp: LatticeParameters, distribution: str, dist_pars: Dict[str, int], num_coefs: int,
         bits_to_indices: int, bits_to_decode: int, const_time_flag: bool = True
 ) -> Polynomial:
     """
@@ -1131,7 +1133,7 @@ class PolynomialVector(object):
     const_time_flag: bool
     entries: List[Polynomial]
 
-    def __init__(self, lp: LatticeParameters, entries: list[Polynomial], const_time_flag: bool = True):
+    def __init__(self, lp: LatticeParameters, entries: List[Polynomial], const_time_flag: bool = True):
         """
         Instantiate with some input LatticeParameters and a list of Polynomial entries.
 
@@ -1257,7 +1259,7 @@ class PolynomialVector(object):
 
 
 def decode2polynomialvector(
-        secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int], val: str,
+        secpar: int, lp: LatticeParameters, distribution: str, dist_pars: Dict[str, int], val: str,
         num_coefs: int, bits_to_indices: int, bits_to_decode: int, const_time_flag: bool = True
 ) -> PolynomialVector:
     if not is_bitstring(val):
@@ -1292,7 +1294,7 @@ def decode2polynomialvector(
 
 
 def random_polynomial_vector_inf_wt_unif(
-        secpar: int, lp: LatticeParameters, dist_pars: dict[str, int], num_coefs: int,
+        secpar: int, lp: LatticeParameters, dist_pars: Dict[str, int], num_coefs: int,
         bits_to_indices: int, bits_to_decode: int, const_time_flag: bool = True
 ) -> PolynomialVector:
     if 'bd' not in dist_pars or not isinstance(dist_pars['bd'], int) or \
@@ -1315,7 +1317,7 @@ def random_polynomial_vector_inf_wt_unif(
 
 
 def random_polynomialvector(
-        secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int], num_coefs: int,
+        secpar: int, lp: LatticeParameters, distribution: str, dist_pars: Dict[str, int], num_coefs: int,
         bits_to_indices: int, bits_to_decode: int, const_time_flag: bool = True
 ) -> PolynomialVector:
     """
@@ -1353,7 +1355,7 @@ def random_polynomialvector(
 
 
 def hash2polynomialvector(
-        secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int], num_coefs: int,
+        secpar: int, lp: LatticeParameters, distribution: str, dist_pars: Dict[str, int], num_coefs: int,
         bits_to_indices: int, bits_to_decode: int, msg: str, salt: str, const_time_flag: bool = True
 ) -> PolynomialVector:
     """
