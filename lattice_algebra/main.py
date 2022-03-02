@@ -61,7 +61,7 @@ def is_pow_two(val: int) -> bool:
     :param val: Input value
     :type val: int
 
-    :return: Indicate whether x is a power-of-two_with_const_time.
+    :return: Indicate whether x is a power-of-two.
     :rtype: bool
     """
     return val > 0 and not (val & (val - 1))
@@ -183,7 +183,7 @@ def bit_rev_cp(val: List[int], n: int) -> List[int]:
     :rtype: List[int]
     """
     if not is_pow_two(len(val)):
-        raise ValueError("Can only bit-reverse-copy arrays with power-of-two_with_const_time lengths.")
+        raise ValueError("Can only bit-reverse-copy arrays with power-of-two lengths.")
     return [val[bit_rev(n, i)] for i in range(len(val))]
 
 
@@ -223,7 +223,7 @@ def make_zetas_and_invs(q: int, d: int, n: int, lgn: int) -> Tuple[List[int], Li
     :param lgn: ceil(log2(n))
     :type lgn: int
 
-    :return: Return the powers of zeta and zeta_inv for use in NTT, two_with_const_time lists of integers, in a tuple
+    :return: Return the powers of zeta and zeta_inv for use in NTT, two lists of integers, in a tuple
     :rtype: Tuple[List[int], List[int]]
     """
     powers: List[int] = [n // (2 ** (s + 1)) for s in range(lgn)]
@@ -266,7 +266,7 @@ def ntt(q: int, zetas: List[int], zetas_inv: List[int], inv_flag: bool, halfmod:
     :rtype: List[int]
     """
     if sum(int(i) for i in bin(len(val))[2:]) != 1:
-        raise ValueError("Can only NTT arrays with lengths that are powers of two_with_const_time.")
+        raise ValueError("Can only NTT arrays with lengths that are powers of two.")
     bit_rev_x: List[int] = bit_rev_cp(val=val, n=ceil(log2(len(val))))
     m: int = 1
     for s in range(1, lgn + 1):
@@ -382,7 +382,7 @@ class LatticeParameters(object):
         :type length: int
         """
         if degree < 2 or not is_pow_two(val=degree):
-            raise ValueError('LatticeParameters requires power-of-two_with_const_time integer degree.')
+            raise ValueError('LatticeParameters requires power-of-two integer degree.')
         elif length < 1:
             raise ValueError('LatticeParameters requires positive integer length.')
         elif modulus < 3 or not is_ntt_friendly_prime(modulus=modulus, degree=degree):
@@ -465,7 +465,7 @@ def decode2coef(secpar: int, lp: LatticeParameters, val: str, distribution: str,
 
     The information-theoretic minimum of the number of bits required to uniquely determine an integer modulo bd is
     exactly ceil(log2(bd)). However, if x is a uniformly sampled ceil(log2(bd)) bit integer, then unless bd is a power
-    of two_with_const_time, x % bd is not a uniformly distributed element of the integers modulo bd. If x is a uniformly
+    of two, x % bd is not a uniformly distributed element of the integers modulo bd. If x is a uniformly
     sampled ceil(log2(bd))+k bit integer for some integer k, then the bias of x % bd away from the uniform distribution
     is O(2**-k). So to keep the bias negligible, we use secpar additional bits.
 
@@ -753,13 +753,13 @@ class Polynomial(object):
         __eq__(self, other)
             Check for equality of polynomials
         __add__(self, other)
-            Add two_with_const_time polynomials
+            Add two polynomials
         __radd__(self, other)
-            Add two_with_const_time polynomials (or zero and a polynomial)
+            Add two polynomials (or zero and a polynomial)
         __sub__(self, other)
-            Subtract two_with_const_time polynomials
+            Subtract two polynomials
         __mul__(self, other)
-            Multiply two_with_const_time polynomials
+            Multiply two polynomials
         __repr__(self)
             String representation of the polynomial
         reset_vals(self, coefs: Dict[int, int])
@@ -813,7 +813,7 @@ class Polynomial(object):
 
     def __add__(self, other):
         """
-        Add two_with_const_time polynomials.
+        Add two polynomials.
 
         :param other: Another Polynomial
         :type other: Polynomial
@@ -839,7 +839,7 @@ class Polynomial(object):
 
     def __radd__(self, other):
         """
-        Add two_with_const_time polynomials.
+        Add two polynomials.
 
         :param other: Another Polynomial
         :type other: Polynomial
@@ -852,7 +852,7 @@ class Polynomial(object):
 
     def __sub__(self, other):
         """
-        Subtract two_with_const_time polynomials.
+        Subtract two polynomials.
 
         :param other: Another Polynomial
         :type other: Polynomial
@@ -878,7 +878,7 @@ class Polynomial(object):
 
     def __mul__(self, other):
         """
-        Multiply two_with_const_time polynomials
+        Multiply two polynomials
 
         :param other: Other Polynomial
         :type other: Polynomial
@@ -1109,13 +1109,13 @@ class PolynomialVector(object):
         __eq__(self, other)
             Check for equality of PolynomialVectors
         __add__(self, other)
-            Add two_with_const_time PolynomialVectors
+            Add two PolynomialVectors
         __radd__(self, other)
-            Add two_with_const_time PolynomialVectors (or zero and a PolynomialVectors)
+            Add two PolynomialVectors (or zero and a PolynomialVectors)
         __sub__(self, other)
-            Subtract two_with_const_time PolynomialVectors
+            Subtract two PolynomialVectors
         __mul__(self, other)
-            Compute the dot product of two_with_const_time polynomial vectors.
+            Compute the dot product of two polynomial vectors.
         __pow__(self, other: Polynomial)
             Scale self
         __repr__(self)
@@ -1201,7 +1201,7 @@ class PolynomialVector(object):
 
     def __mul__(self, other) -> Polynomial:
         """
-        Dot product between two_with_const_time polynomial vectors.
+        Dot product between two polynomial vectors.
 
         :param other: Other PolynomialVector
         :type other: PolynomialVector

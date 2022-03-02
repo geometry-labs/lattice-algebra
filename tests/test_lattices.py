@@ -86,7 +86,7 @@ HAS_PRIM_ROU_CASES = [
     (258, 64, False),
     (8380417, 256, True),  # CRYSTALS-Dilithium
     (8380418, 256, False),
-    (201, 25, True),  # We don't need the primality of q or power-of-two_with_const_time d
+    (201, 25, True),  # We don't need the primality of q or power-of-two d
 ]
 
 
@@ -561,7 +561,7 @@ def test_polynomial_init_without_const_time(one_without_const_time, some_ran_lin
 def test_polynomial_eq_with_const_time(one_with_const_time, some_ran_lin_polys_with_const_time):
     lp: LatticeParameters = lp_for_testing
 
-    # First, let's make two_with_const_time identity polynomials and check they are equal.
+    # First, let's make two identity polynomials and check they are equal.
     another_one = Polynomial(lp=lp, coefs={0: 1})
     assert one_with_const_time == another_one
 
@@ -584,7 +584,7 @@ def test_polynomial_eq_with_const_time(one_with_const_time, some_ran_lin_polys_w
 def test_polynomial_eq_without_const_time(one_without_const_time, some_ran_lin_polys_without_const_time):
     lp: LatticeParameters = lp_for_testing
 
-    # First, let's make two_with_const_time identity polynomials and check they are equal.
+    # First, let's make two identity polynomials and check they are equal.
     another_one = Polynomial(lp=lp, coefs={0: 1}, const_time_flag=False)
     assert one_without_const_time == another_one
 
@@ -1742,7 +1742,7 @@ def test_decode_bitstring_to_indices():
     # but the remaining indices are [1, 2, 3, 4, 5, 6, 7]
     # to get 3 out of this, we need to access index 2!!!
     # we need an 11-bit integer == 2 mod 7. for fun, let's use 2 + 2**6 * 7 = 450 -> '00111000010`
-    # third index is 6, requires ceil(log2(8)) + secpar = 11 bits since we already picked two_with_const_time indices
+    # third index is 6, requires ceil(log2(8)) + secpar = 11 bits since we already picked two indices
     # but the remaining indices are [1, 2, 4, 5, 6, 7]
     # to get 6 out of this, we need to access index 4
     # we need an 11-bit integer == 4 mod 6. for fun, let's use 4 + 2**5 * 6 = 196 -> '00011000100'
