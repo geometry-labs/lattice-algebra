@@ -658,13 +658,21 @@ def get_gen_bytes_per_poly_inf_wt_unif(
         secpar: int, lp: LatticeParameters, dist_pars: dict[str, int], num_coefs: int
 ) -> int:
     if secpar < 1:
-        raise ValueError('Cannot decode2polycoefs without an integer security parameter.')
-    elif 'bd' not in dist_pars or not isinstance(dist_pars['bd'], int) or \
-            dist_pars['bd'] < 1 or dist_pars['bd'] > lp.modulus // 2:
-        raise ValueError('Cannot ...')
-    elif 'wt' not in dist_pars or not isinstance(dist_pars['wt'], int) or \
-            dist_pars['wt'] < 1 or dist_pars['wt'] >= lp.degree or dist_pars['wt'] != num_coefs:
-        raise ValueError('Cannot ...')
+        raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif without an integer security parameter.')
+    elif 'bd' not in dist_pars:
+        raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif without a bound in dist_pars.')
+    elif not isinstance(dist_pars['bd'], int):
+        raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif without an integer bound in dist_pars')
+    elif dist_pars['bd'] < 1 or dist_pars['bd'] > lp.modulus // 2:
+        raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif without an integer bound on [1, 2, ..., lp.modulus // 2].')
+    elif 'wt' not in dist_pars:
+        raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif without a weight in dist_pars.')
+    elif not isinstance(dist_pars['wt'], int):
+        raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif without an integer weight in dist_pars.')
+    elif dist_pars['wt'] < 1 or dist_pars['wt'] > lp.degree:
+        raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif without an integer weight on [1, 2, .., lp.degree - 1].')
+    elif dist_pars['wt'] != num_coefs:
+        raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif with num_coefs != weight.')
     result = int(log2(lp.degree))
     result += (dist_pars['wt'] - 1) * (int(log2(lp.degree)) + secpar)
     result += dist_pars['wt']
@@ -997,10 +1005,9 @@ def decode2poly(
     )
 
 
-def hash2polynomial(
-        secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int], salt: str,
-        m: str, num_coefs: int, bits_to_indices: int, bits_to_decode: int, const_time_flag: bool = True
-) -> Polynomial:
+def hash2polynomial(secpar: int, lp: LatticeParameters, distribution: str, dist_pars: dict[str, int], salt: str,
+                    msg: str, num_coefs: int, bits_to_indices: int, bits_to_decode: int,
+                    const_time_flag: bool = True) -> Polynomial:
     """
     Hash an input message msg and salt to a polynomial with norm bound at most bd and weight at most wt.
 
@@ -1014,8 +1021,8 @@ def hash2polynomial(
     :type dist_pars: dict
     :param salt: Salt
     :type salt: str
-    :param m: Message being hashed
-    :type m: str
+    :param msg: Message being hashed
+    :type msg: str
     :param num_coefs: Number of coefficients to generate
     :type num_coefs: int
     :param bits_to_indices: Number of bits required to unbiasedly sample indices without replacement.
@@ -1028,11 +1035,12 @@ def hash2polynomial(
     :return:
     :rtype: Polynomial
     """
-    num_bytes_for_hashing: int = get_gen_bytes_per_poly(
-        secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, num_coefs=num_coefs,
-        bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
-    )
-    val: str = binary_digest(m, num_bytes_for_hashing, salt)
+    # num_bytes_for_hashing: int = get_gen_bytes_per_poly(
+    #     secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, num_coefs=num_coefs,
+    #     bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
+    # )
+    num_bytes_for_hashing: int = ceil((num_coefs * bits_to_decode + bits_to_indices)/8)
+    val: str = binary_digest(msg, num_bytes_for_hashing, salt)
     coefs: Dict[int, int] = decode2polycoefs(
         secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, val=val, num_coefs=num_coefs,
         bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
@@ -1254,14 +1262,15 @@ def decode2polynomialvector(
 ) -> PolynomialVector:
     if not is_bitstring(val):
         raise ValueError('Can only decode to a polynomial vector with an input bitstring val.')
-    k: int = 8 * get_gen_bytes_per_poly(
-        secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, num_coefs=num_coefs,
-        bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
-    )
+    # k: int = 8 * get_gen_bytes_per_poly(
+    #     secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, num_coefs=num_coefs,
+    #     bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
+    # )
+    k: int = num_coefs * bits_to_decode + bits_to_indices
     if len(val) < k * lp.length:
         raise ValueError(
             f'Cannot decode2polynomialvector without an input bitstring val with length at ' +
-            'least {k} bits, but had length {len(val)}.'
+            f'least {k} bits, but had length {len(val)}.'
         )
     entries = [
         Polynomial(
@@ -1375,10 +1384,11 @@ def hash2polynomialvector(
     :return: Call decode2polycoefs for length, create Polynomial for each, return a PolynomialVector with these entries
     :rtype: PolynomialVector
     """
-    k: int = lp.length * get_gen_bytes_per_poly(
-        secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, num_coefs=num_coefs,
-        bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
-    )
+    # k: int = lp.length * get_gen_bytes_per_poly(
+    #     secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, num_coefs=num_coefs,
+    #     bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
+    # )
+    k: int = lp.length * (num_coefs * bits_to_decode + bits_to_indices)
     val: str = binary_digest(msg=msg, num_bytes=k, salt=salt)
     return decode2polynomialvector(
         secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, val=val,
