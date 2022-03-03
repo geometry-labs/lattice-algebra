@@ -2,17 +2,15 @@
 Tests the lattices package.
 
 Todo list:
- - more and more useful fixtures will make testing faster and more efficient
- - more and more rigorous tests
+ 1. Test to_bits and to_bytes for both Polynomial and PolynomialVector
+ 2. Test hash functions
 """
-
 import pytest
 from lattice_algebra.main import *
 from copy import deepcopy
 from secrets import randbelow, randbits
 from typing import List, Tuple, Dict
 
-# Test runtime is O(3 minutes + sample_size * 20 seconds) on my desktop
 sample_size_for_random_tests: int = 2 ** 3
 
 small_q_for_testing: int = 17
@@ -40,500 +38,603 @@ pars_for_testing: dict = {
     'halfmod': halfmod_for_testing, 'logmod': logmod_for_testing, 'n': n_for_testing,
     'lgn': lgn_for_testing
 }
+lp_for_testing = LatticeParameters(
+    degree=pars_for_testing['degree'], length=pars_for_testing['length'], modulus=pars_for_testing['modulus']
+)
+secpar4testing = 8
 
-
-@pytest.fixture
-def small_q_is_prime() -> bool:
-    return is_prime(small_q_for_testing)
-
-
-@pytest.fixture
-def small_non_prime_is_not_prime() -> bool:
-    return not is_prime(small_non_prime_for_testing)
-
-
-# @pytest.mark.skip
-def test_is_prime(small_q_is_prime, small_non_prime_is_not_prime):
-    assert small_q_is_prime and small_non_prime_is_not_prime
-
-
-# @pytest.mark.skip
-def test_is_pow_two():
-    for i in range(1, 10):
-        assert is_pow_two(2 ** i)
-        for j in range(1, 2 ** i):
-            assert not is_pow_two(2 ** i + j)
-        assert is_pow_two(2 ** i + 2 ** i)
-
-
-@pytest.fixture
-def small_q_small_d_are_ntt_friendly() -> bool:
-    return is_ntt_friendly_prime(q=small_q_for_testing, d=small_d_for_testing)
-
-
-@pytest.fixture
-def small_non_prime_small_d_is_not_ntt_friendly() -> bool:
-    return not is_ntt_friendly_prime(q=small_non_prime_for_testing, d=small_d_for_testing)
-
-
-@pytest.fixture
-def small_non_ntt_prime_is_not_ntt_friendly() -> bool:
-    return not is_ntt_friendly_prime(q=small_non_ntt_prime_for_testing, d=small_d_for_testing)
+IS_PRIME_CASES = [
+    (17, True),
+    (8675309, True),
+    (16, False),
+    (small_q_for_testing, True),
+    (small_q_for_testing + 1, False),
+    (modulus_for_testing, True),
+    (modulus_for_testing - 1, False)
+]
 
 
 # @pytest.mark.skip
-def test_is_ntt_friendly_prime(small_q_small_d_are_ntt_friendly, small_non_prime_small_d_is_not_ntt_friendly,
-                               small_non_ntt_prime_is_not_ntt_friendly):
-    assert small_q_small_d_are_ntt_friendly and small_non_prime_small_d_is_not_ntt_friendly and \
-           small_non_ntt_prime_is_not_ntt_friendly
+@pytest.mark.parametrize("q,expected_output", IS_PRIME_CASES)
+def test_is_prime(q, expected_output):
+    assert is_prime(val=q) == expected_output
 
 
-@pytest.fixture
-def scan_for_prim_rou() -> List[int]:
-    return [
-        i for i in range(2, small_q_for_testing) if is_prim_rou(q=small_q_for_testing, d=small_d_for_testing, val=i)
-    ]
+IS_POW_TWO_CASES = [
+    (2, True),
+    (4, True),
+    (8, True),
+    (16, True),
+    (3, False),
+    (5, False),
+    (9, False),
+    (17, False)
+]
 
 
-# @pytest.mark.skip
-def test_is_prim_rou(scan_for_prim_rou):
-    assert scan_for_prim_rou == allowed_primitive_roots_of_unity_for_small_q_and_small_d
+@pytest.mark.parametrize("d,expected_output", IS_POW_TWO_CASES)
+def test_is_pow_two(d, expected_output):
+    assert is_pow_two(val=d) == expected_output
 
 
-@pytest.fixture
-def small_q_small_d_prim_rou() -> Tuple[int, int]:
-    return get_prim_rou_and_rou_inv(q=small_q_for_testing, d=small_d_for_testing)
+HAS_PRIM_ROU_CASES = [
+    (17, 8, True),
+    (18, 8, False),
+    (33, 8, True),
+    (34, 8, False),
+    (257, 64, True),  # SWIFFT parameters
+    (258, 64, False),
+    (8380417, 256, True),  # CRYSTALS-Dilithium
+    (8380418, 256, False),
+    (201, 25, True),  # We don't need the primality of q or power-of-two d
+]
 
 
-@pytest.fixture
-def prim_rou_and_inv_for_testing() -> Tuple[int, int]:
-    return get_prim_rou_and_rou_inv(q=modulus_for_testing, d=degree_for_testing)
+@pytest.mark.parametrize("q,d,expected_output", HAS_PRIM_ROU_CASES)
+def test_has_prim_rou(q, d, expected_output):
+    assert has_prim_rou(modulus=q, degree=d) == expected_output
 
 
-# @pytest.mark.skip
-def test_get_prim_rou_and_rou_inv(small_q_small_d_prim_rou):
+NTT_FRIENDLY_CASES = [
+    (True, True, True, True),
+    (True, True, False, False),
+    (True, False, True, False),
+    (False, True, True, False),
+    (True, False, False, False),
+    (False, True, False, False),
+    (False, False, True, False),
+    (False, False, False, False),
+]
+
+
+@pytest.mark.parametrize("foo,bar,baz,expected_output", NTT_FRIENDLY_CASES)
+def test_is_ntt_friendly_prime_with_mock(mocker, foo, bar, baz, expected_output):
+    mocker.patch('lattice_algebra.main.is_prime', return_value=foo)
+    mocker.patch('lattice_algebra.main.is_pow_two', return_value=bar)
+    mocker.patch('lattice_algebra.main.has_prim_rou', return_value=baz)
+    assert is_ntt_friendly_prime(modulus=1, degree=1) == expected_output  # the actual input doesn't matter
+
+
+IS_PRIM_ROU_CASES = [
+    (17, 8, 3, True),
+    (17, 8, 4, False),
+    (17, 8, 5, True),
+    (17, 8, 6, True),
+    (17, 8, 7, True),
+    (17, 8, 8, False),
+    (17, 8, 9, False),
+    (17, 8, 10, True),
+    (17, 8, 11, True),
+    (17, 8, 12, True),
+    (17, 8, 13, False),
+    (17, 8, 14, True),
+    (17, 8, 15, False),
+    (17, 8, 16, False),
+    (8380417, 256, 1753, True),  # CRYSTALS-Dilithium
+    (8380417, 257, 1753, False),
+    (8380418, 256, 1753, False),
+    (257, 64, 42, True),  # SWIFFT
+    (257, 65, 42, False),
+    (258, 64, 42, False),
+]
+
+
+@pytest.mark.parametrize("q,d,i,expected_output", IS_PRIM_ROU_CASES)
+def test_is_prim_rou(q, d, i, expected_output):
+    assert is_prim_rou(modulus=q, degree=d, val=i) == expected_output
+
+
+def test_get_prim_rou_and_rou_inv_value_errors():
     with pytest.raises(ValueError):
-        get_prim_rou_and_rou_inv(q=small_non_prime_for_testing, d=small_d_for_testing)
+        get_prim_rou_and_rou_inv(modulus=small_non_prime_for_testing, degree=small_d_for_testing)
     with pytest.raises(ValueError):
-        get_prim_rou_and_rou_inv(q=small_non_ntt_prime_for_testing, d=small_d_for_testing)
-    assert not isinstance(small_q_small_d_prim_rou, bool) and isinstance(small_q_small_d_prim_rou, tuple)
-    assert isinstance(small_q_small_d_prim_rou[0], int) and isinstance(small_q_small_d_prim_rou[1], int)
-    assert small_q_small_d_prim_rou[0] is not None and small_q_small_d_prim_rou[1] is not None
-    assert small_q_small_d_prim_rou[0] == min(allowed_primitive_roots_of_unity_for_small_q_and_small_d)
-    assert small_q_small_d_prim_rou[0] * small_q_small_d_prim_rou[1] % small_q_for_testing == 1
+        get_prim_rou_and_rou_inv(modulus=small_non_ntt_prime_for_testing, degree=small_d_for_testing)
 
 
-# @pytest.mark.skip
-def test_is_bitstring():
-    assert is_bitstring('100001000101111111101101')
-    assert not is_bitstring('hello world')
+GET_PRIM_ROU_AND_ROU_INV_CASES = [
+    (257, 64, (9, 200)),
+    (8380417, 256, (1753, 731434)),
+    (12289, 2, (1479, 10810)),
+    (12289, 4, (4043, 5146)),
+    (12289, 8, (722, 6553)),
+    (12289, 16, (1212, 2545)),
+    (12289, 32, (563, 5828)),
+    (12289, 64, (81, 11227)),
+    (12289, 128, (9, 2731)),
+    (12289, 256, (3, 8193)),
+    (12289, 512, (49, 1254)),
+    (12289, 1024, (7, 8778)),
+    (12289, 2048, (41, 4496)),
+]
 
 
-@pytest.fixture
-def three_bit_rev() -> List[int]:
-    return [bit_rev(3, i) for i in range(8)]
+@pytest.mark.parametrize("q,d,expected_output", GET_PRIM_ROU_AND_ROU_INV_CASES)
+def test_get_prim_rou_and_rou_inv(q, d, expected_output):
+    x, y = get_prim_rou_and_rou_inv(modulus=q, degree=d)
+    assert x, y == expected_output
+    assert x != 0
+    assert y != 0
+    assert (x * y) % q == 1
+    assert all(x ** k % q != 0 for k in range(2, 2 * d))
 
 
-@pytest.fixture
-def expected_three_bit_rev() -> List[int]:
-    return [0, 4, 2, 6, 1, 5, 3, 7]
+IS_BITSTRING_CASES = [
+    ('0101100101', True),
+    ('1010011010', True),
+    (8675309, False),
+    ('hello world', False)
+]
 
 
-# @pytest.mark.skip
-def test_bit_rev(three_bit_rev, expected_three_bit_rev):
-    assert three_bit_rev == expected_three_bit_rev
+@pytest.mark.parametrize("x,expected_output", IS_BITSTRING_CASES)
+def test_is_bitstring(x, expected_output):
+    assert is_bitstring(val=x) == expected_output
 
 
-@pytest.fixture
-def three_bit_rev_cp() -> List[int]:
-    return bit_rev_cp(list(range(8)))
+BIT_REV_CASES = [
+    (2, 0, 0),
+    (2, 1, 2),
+    (2, 2, 1),
+    (2, 3, 3),
+    (3, 0, 0),
+    (3, 1, 4),
+    (3, 2, 2),
+    (3, 3, 6),
+    (3, 4, 1),
+    (3, 5, 5),
+    (3, 6, 3),
+    (3, 7, 7),
+    (4, 0, 0),
+    (4, 1, 8),
+    (4, 2, 4),
+    (4, 3, 12),
+    (4, 4, 2),
+    (4, 5, 10),
+    (4, 6, 6),
+    (4, 7, 14),
+    (4, 8, 1),
+    (4, 9, 9),
+    (4, 10, 5),
+    (4, 11, 13),
+    (4, 12, 3),
+    (4, 13, 11),
+    (4, 14, 7),
+    (4, 15, 15),
+]
 
 
-# @pytest.mark.skip
-def test_bit_rev_cp(three_bit_rev_cp, expected_three_bit_rev):
-    assert three_bit_rev_cp == expected_three_bit_rev
+@pytest.mark.parametrize("n,val,expected_output", BIT_REV_CASES)
+def test_bit_rev(n, val, expected_output):
+    assert bit_rev(num_bits=n, val=val) == expected_output
 
 
-@pytest.fixture
-def make_some_centralized_integers() -> List[Tuple[int, int]]:
-    return [(i, cent(q=small_q_for_testing, halfmod=small_halfmod_for_testing, logmod=small_logmod_for_testing, val=i))
-            for i in range(small_q_for_testing)]
+BIT_REV_CP_CASES = [
+    ([0, 1], [0, 1]),
+    ([0, 1, 2, 3], [0, 2, 1, 3]),
+    ([0, 1, 2, 3, 4, 5, 6, 7], [0, 4, 2, 6, 1, 5, 3, 7]),
+    ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], [0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15])
+]
 
 
-@pytest.fixture
-def expected_centralized_integers() -> List[Tuple[int, int]]:
-    return [(0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7), (8, 8), (9, -8), (10, -7), (11, -6),
-            (12, -5), (13, -4), (14, -3), (15, -2), (16, -1)]
+@pytest.mark.parametrize("x,expected_output", BIT_REV_CP_CASES)
+def test_bit_rev_cp(x, expected_output):
+    assert bit_rev_cp(x, ceil(log2(len(x)))) == expected_output
 
 
-# @pytest.mark.skip
-def test_cent(make_some_centralized_integers, expected_centralized_integers):
-    assert make_some_centralized_integers == expected_centralized_integers
+CENT_CASES = [
+    (17, 8, 5, 0, 0),  # (q: int, halfmod: int, logmod: int, val: int)
+    (17, 8, 5, 1, 1),
+    (17, 8, 5, 2, 2),
+    (17, 8, 5, 3, 3),
+    (17, 8, 5, 4, 4),
+    (17, 8, 5, 5, 5),
+    (17, 8, 5, 6, 6),
+    (17, 8, 5, 7, 7),
+    (17, 8, 5, 8, 8),
+    (17, 8, 5, 9, -8),
+    (17, 8, 5, 10, -7),
+    (17, 8, 5, 11, -6),
+    (17, 8, 5, 12, -5),
+    (17, 8, 5, 13, -4),
+    (17, 8, 5, 14, -3),
+    (17, 8, 5, 15, -2),
+    (17, 8, 5, 16, -1),
+]
 
 
-@pytest.fixture
-def some_small_zetas_and_invs() -> Tuple[List[int], List[int]]:
-    return make_zetas_and_invs(
-        q=small_q_for_testing,
-        d=small_d_for_testing,
-        halfmod=small_halfmod_for_testing,
-        logmod=small_logmod_for_testing,
-        n=small_n_for_testing,
-        lgn=small_lgn_for_testing
+@pytest.mark.parametrize("q,halfmod,logmod,val,expected_output", CENT_CASES)
+def test_cent(q, halfmod, logmod, val, expected_output):
+    assert cent(q=q, halfmod=halfmod, logmod=logmod, val=val) == expected_output
+
+
+ZETAS_AND_INVS_CASES = [
+    (17, 8, 8, 5, 16, 4, ([-1, -4, -8, 3], [-1, 4, 2, 6]))
+]
+
+
+@pytest.mark.parametrize("q,d,halfmod,logmod,n,lgn,expected_output", ZETAS_AND_INVS_CASES)
+def test_make_zetas_and_invs(q, d, halfmod, logmod, n, lgn, expected_output):
+    assert make_zetas_and_invs(q=q, d=d, n=n, lgn=lgn) == expected_output
+
+
+ZETAS = [
+    (17, 8, 8, 5, 16, 4, 3, 6, ([-1, -4, -8, 3], [-1, 4, 2, 6])),  # (q, d, halfmod, logmod, n, lgn, expected_output)
+    (17, 8, 8, 5, 16, 4, 1, 1, ([1, 1, 1, 1], [1, 1, 1, 1])),
+    (17, 8, 8, 5, 16, 4, 1, 2, ([1, 1, 1, 1], [1, -1, 4, 2])),
+    (17, 8, 8, 5, 16, 4, 1, 3, ([1, 1, 1, 1], [-1, -4, -8, 3])),
+]
+
+
+@pytest.mark.parametrize("q,d,halfmod,logmod,n,lgn,rou,rou_inv,expected_output", ZETAS)
+def test_make_zetas(mocker, q, d, halfmod, logmod, n, lgn, rou, rou_inv, expected_output):
+    mocker.patch('lattice_algebra.main.get_prim_rou_and_rou_inv', return_value=(rou, rou_inv))
+    assert make_zetas_and_invs(q=q, d=d, n=n, lgn=lgn) == expected_output
+
+
+# We only test the NTT and inverse of constant polynomials here; more thorough tests are advisable
+NTT_CASES = [
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [1] + [0] * 15, [1] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [2] + [0] * 15, [2] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [3] + [0] * 15, [3] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [4] + [0] * 15, [4] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [5] + [0] * 15, [5] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [6] + [0] * 15, [6] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [7] + [0] * 15, [7] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [8] + [0] * 15, [8] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-8] + [0] * 15, [-8] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-7] + [0] * 15, [-7] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-6] + [0] * 15, [-6] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-5] + [0] * 15, [-5] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-4] + [0] * 15, [-4] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-3] + [0] * 15, [-3] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-2] + [0] * 15, [-2] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], False, 8, 5, 16, 4, [-1] + [0] * 15, [-1] * 16),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [1] * 16, [1] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [2] * 16, [2] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [3] * 16, [3] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [4] * 16, [4] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [5] * 16, [5] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [6] * 16, [6] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [7] * 16, [7] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [8] * 16, [8] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-8] * 16, [-8] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-7] * 16, [-7] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-6] * 16, [-6] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-5] * 16, [-5] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-4] * 16, [-4] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-3] * 16, [-3] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-2] * 16, [-2] + [0] * 15),
+    (17, [-1, -4, -8, 3], [-1, 4, 2, 6], True, 8, 5, 16, 4, [-1] * 16, [-1] + [0] * 15),
+]
+
+
+@pytest.mark.parametrize("q,zetas,zetas_inv,inv_flag,halfmod,logmod,n,lgn,val,expected_output", NTT_CASES)
+def test_ntt(q, zetas, zetas_inv, inv_flag, halfmod, logmod, n, lgn, val, expected_output):
+    assert expected_output == ntt(
+        q=q, zetas=zetas, zetas_inv=zetas_inv, inv_flag=inv_flag, halfmod=halfmod, logmod=logmod, n=n, lgn=lgn, val=val
     )
 
 
-@pytest.fixture
-def expected_small_zetas_and_invs() -> Tuple[List[int], List[int]]:
-    return [-1, -4, -8, 3], [-1, 4, 2, 6]
+small_bd_for_testing: int = 2
+small_wt_for_testing: int = 2
+small_dist_pars: Dict[str, int] = {'bd': small_bd_for_testing, 'wt': small_wt_for_testing}
+bits_to_decode_for_testing: int = ceil(log2(small_bd_for_testing)) + 1 + secpar4testing
+bits_to_indices_for_testing: int = ceil(log2(degree_for_testing))
+bits_to_indices_for_testing += (small_wt_for_testing - 1) * (ceil(log2(degree_for_testing)) + secpar4testing)
+
+DECODE2COEF_CASES = [
+                        (
+                            secpar4testing,
+                            UNIFORM_INFINITY_WEIGHT,
+                            lp_for_testing,
+                            small_dist_pars,
+                            '0' + bin(i)[2:].zfill(bits_to_decode_for_testing - 1),
+                            - (i % small_bd_for_testing) - 1
+                        ) for i in range(2 ** 7)
+                    ] + [
+                        (
+                            secpar4testing,
+                            UNIFORM_INFINITY_WEIGHT,
+                            lp_for_testing,
+                            small_dist_pars,
+                            '1' + bin(i)[2:].zfill(bits_to_decode_for_testing - 1),
+                            (i % small_bd_for_testing) + 1
+                        ) for i in range(2 ** 7)
+                    ]
 
 
-# @pytest.mark.skip
-def test_make_zetas_and_invs(some_small_zetas_and_invs, expected_small_zetas_and_invs):
-    assert some_small_zetas_and_invs == expected_small_zetas_and_invs
-
-
-@pytest.fixture
-def zetas_and_invs_for_testing() -> Tuple[List[int], List[int]]:
-    return make_zetas_and_invs(
-        q=modulus_for_testing,
-        d=degree_for_testing,
-        halfmod=halfmod_for_testing,
-        logmod=logmod_for_testing,
-        n=n_for_testing,
-        lgn=lgn_for_testing
+@pytest.mark.parametrize("secpar, dist, lp, dist_pars, val, expected_output", DECODE2COEF_CASES)
+def test_decode2coef(secpar, dist, lp, dist_pars, val, expected_output):
+    k = ceil(log2(dist_pars['bd'])) + 1 + secpar
+    assert expected_output == decode2coef(
+        secpar=secpar, lp=lp, distribution=dist, dist_pars=dist_pars, val=val, bits_to_decode=k
     )
 
 
+DECODE2COEFS_CASES = [
+    (
+        secpar4testing,
+        UNIFORM_INFINITY_WEIGHT,
+        lp_for_testing,
+        small_dist_pars,
+        bin(randbits(2 * bits_to_decode_for_testing * small_dist_pars['wt'])),
+        [(1 + (i % (lp_for_testing.modulus // 2))) * sign_i, (1 + (j % (lp_for_testing.modulus // 2))) * sign_j],
+        [(1 + (i % (lp_for_testing.modulus // 2))) * sign_i, (1 + (j % (lp_for_testing.modulus // 2))) * sign_j],
+    ) for i in range(2 ** 7) for j in range(2 ** 3) for sign_i in [-1, 1] for sign_j in [-1, 1]
+]
+
+
+@pytest.mark.parametrize("secpar,dist,lp,dist_pars,val,responses,expected_output", DECODE2COEFS_CASES)
+def test_decode2coefs(mocker, secpar, dist, lp, dist_pars, val, responses, expected_output):
+    assert responses == expected_output
+
+    mocker.patch('lattice_algebra.main.decode2coef', side_effect=responses)
+    assert dist == UNIFORM_INFINITY_WEIGHT
+    k = ceil(log2(dist_pars['bd'])) + 1 + secpar
+    observed_output = decode2coefs(
+        secpar=secpar, lp=lp, distribution=dist, dist_pars=dist_pars, val=val,
+        num_coefs=dist_pars['wt'], bits_to_decode=k
+    )
+    assert observed_output == expected_output
+
+
+def int2bin(x: int, n: int):
+    return bin(x)[2:].zfill(n)
+
+
+def logdeg(d: int):
+    return ceil(log2(d))
+
+
+DECODE2INDICES_CASES = [
+    (
+        secpar4testing,
+        UNIFORM_INFINITY_WEIGHT,
+        lp_for_testing,
+        small_dist_pars,
+        int2bin(x=a, n=logdeg(lp_for_testing.degree)) + int2bin(x=b, n=logdeg(lp_for_testing.degree) + secpar4testing),
+        small_wt_for_testing,
+        [a, b] if b < a else [a, b + 1],
+    ) for a in range(2 ** 5) for b in range(2 ** 5)
+]
+
+
+@pytest.mark.parametrize("secpar,dist,lp,dist_pars,val,num_coefs,expected_output", DECODE2INDICES_CASES)
+def test_decode2indices(secpar, dist, lp, dist_pars, val, num_coefs, expected_output):
+    observed_output = decode2indices(
+        secpar=secpar, lp=lp, num_coefs=dist_pars['wt'], val=val, bits_to_indices=bits_to_indices_for_testing
+    )
+    assert observed_output == expected_output
+
+
+DECODE2POLYCOEFS_CASES = [
+    (
+        secpar4testing,
+        lp_for_testing,
+        UNIFORM_INFINITY_WEIGHT,
+        {'wt': small_wt_for_testing, 'bd': small_bd_for_testing},
+        bin(
+            randbits(small_wt_for_testing * bits_to_decode_for_testing + bits_to_indices_for_testing)
+        )[2:].zfill(
+            small_wt_for_testing * bits_to_decode_for_testing + bits_to_indices_for_testing
+        ),
+        small_wt_for_testing,
+        bits_to_indices_for_testing,
+        bits_to_decode_for_testing,
+        [(i + j) % lp_for_testing.degree for j in range(small_wt_for_testing)],
+        [2 ** j % lp_for_testing.modulus for j in range(small_wt_for_testing)],
+        {(i + j) % lp_for_testing.degree: 2 ** j % lp_for_testing.modulus for j in range(small_wt_for_testing)}
+    ) for i in range(2 ** 10)
+]
+
+
+@pytest.mark.parametrize(
+    "secpar,lp,dist,dist_pars,val,num_coefs,bits_to_indices," +
+    "bits_to_decode,expected_indices,expected_coefs,expected_output",
+    DECODE2POLYCOEFS_CASES
+)
+def test_decode2polycoefs(
+        mocker, secpar, lp, dist, dist_pars, val, num_coefs, bits_to_indices, bits_to_decode,
+        expected_indices, expected_coefs, expected_output
+):
+    mocker.patch("lattice_algebra.main.decode2indices", return_value=expected_indices)
+    mocker.patch("lattice_algebra.main.decode2coefs", return_value=expected_coefs)
+    assert expected_output == decode2polycoefs(
+        secpar=secpar, lp=lp, distribution=dist, dist_pars=dist_pars, val=val,
+        num_coefs=num_coefs, bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
+    )
+
+
+exp_bits_per_poly_for_testing: int = int(log2(lp_for_testing.degree))
+exp_bits_per_poly_for_testing += (small_dist_pars['wt'] - 1) * (int(log2(lp_for_testing.degree)) + secpar4testing)
+exp_bits_per_poly_for_testing += small_dist_pars['wt']
+exp_bits_per_poly_for_testing += small_dist_pars['wt'] * (ceil(log2(small_dist_pars['bd'])) + secpar4testing)
+exp_bytes_per_poly_for_testing = ceil(exp_bits_per_poly_for_testing / 8)
+GET_GEN_BYTES_PER_POLY_CASES = [
+    (
+        secpar4testing,
+        lp_for_testing,
+        UNIFORM_INFINITY_WEIGHT,
+        small_dist_pars,
+        small_wt_for_testing,
+        bits_to_indices_for_testing,
+        bits_to_decode_for_testing,
+        exp_bytes_per_poly_for_testing
+    )
+]
+
+
+@pytest.mark.parametrize(
+    "secpar,lp,dist,dist_pars,num_coefs, bits_to_indices, bits_to_decode,expected_output",
+    GET_GEN_BYTES_PER_POLY_CASES
+)
+def test_get_gen_bits(secpar, lp, dist, dist_pars, num_coefs, bits_to_indices, bits_to_decode, expected_output):
+    observed_output = get_gen_bytes_per_poly(
+        secpar=secpar, lp=lp, distribution=dist, dist_pars=dist_pars, num_coefs=num_coefs,
+        bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
+    )
+    assert observed_output == expected_output
+
+
+# TODO: Pick up parameterizing from here.
 @pytest.fixture
-def seven() -> List[int]:
-    return [7] + [0 for _ in range(n_for_testing - 1)]
-
-
-@pytest.fixture
-def seven_plus_x() -> List[int]:
-    return [7, 1] + [0 for _ in range(n_for_testing - 2)]
-
-
-@pytest.fixture
-def ntt_seven(seven, zetas_and_invs_for_testing) -> List[int]:
-    zetas, zeta_invs = zetas_and_invs_for_testing
-    return ntt(q=modulus_for_testing, zetas=zetas, zetas_inv=zeta_invs, inv_flag=False, halfmod=halfmod_for_testing,
-               logmod=logmod_for_testing, n=n_for_testing, lgn=lgn_for_testing, val=seven)
-
-
-@pytest.fixture
-def ntt_seven_plus_x(seven_plus_x, zetas_and_invs_for_testing) -> List[int]:
-    zetas, zeta_invs = zetas_and_invs_for_testing
-    return ntt(q=modulus_for_testing, zetas=zetas, zetas_inv=zeta_invs, inv_flag=False, halfmod=halfmod_for_testing,
-               logmod=logmod_for_testing, n=n_for_testing, lgn=lgn_for_testing, val=seven_plus_x)
-
-
-@pytest.fixture
-def expected_ntt_seven(seven) -> List[int]:
-    return [7 for _ in range(n_for_testing)]
-
-
-@pytest.fixture
-def expected_ntt_seven_plus_x(seven_plus_x, prim_rou_and_inv_for_testing) -> List[int]:
-    w, w_inv = prim_rou_and_inv_for_testing
-    return [cent(q=modulus_for_testing, halfmod=halfmod_for_testing, logmod=logmod_for_testing, val=7 + w ** i) for i in
-            range(n_for_testing)]
-
-
-@pytest.fixture
-def intt_of_ntt_seven(ntt_seven, zetas_and_invs_for_testing) -> List[int]:
-    zetas, zeta_invs = zetas_and_invs_for_testing
-    return ntt(q=modulus_for_testing, zetas=zetas, zetas_inv=zeta_invs, inv_flag=True, halfmod=halfmod_for_testing,
-               logmod=logmod_for_testing, n=n_for_testing, lgn=lgn_for_testing, val=ntt_seven)
-
-
-@pytest.fixture
-def intt_of_ntt_seven_plus_x(ntt_seven_plus_x, zetas_and_invs_for_testing) -> List[int]:
-    zetas, zeta_invs = zetas_and_invs_for_testing
-    return ntt(q=modulus_for_testing, zetas=zetas, zetas_inv=zeta_invs, inv_flag=True, halfmod=halfmod_for_testing,
-               logmod=logmod_for_testing, n=n_for_testing, lgn=lgn_for_testing, val=ntt_seven_plus_x)
-
-
-# @pytest.mark.skip
-def test_ntt(prim_rou_and_inv_for_testing, zetas_and_invs_for_testing, seven, seven_plus_x, ntt_seven,
-             expected_ntt_seven, intt_of_ntt_seven, intt_of_ntt_seven_plus_x):
-    assert ntt_seven == expected_ntt_seven
-    assert intt_of_ntt_seven == seven
-    assert intt_of_ntt_seven_plus_x == seven_plus_x
-
-
-# @pytest.mark.skip
-def test_binary_digest():
-    """
-    TODO: Mock SHAKE256 for testing this. Write later.
-    """
-    pass
-
-
-# @pytest.mark.skip
-def test_decode2coef():
-    next_secpar: int = 1
-    next_bd: int = 1
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='0') == -1
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='1') == 1
-    next_bd = 2
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='000') == -1
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='001') == -2
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='010') == -1
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='011') == -2
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='100') == 1
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='101') == 2
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='110') == 1
-    assert decode2coef(secpar=next_secpar, bd=next_bd, val='111') == 2
-    next_secpar = 128
-    next_bd = 3
-    num_bits = ceil(log2(next_bd)) + 1 + next_secpar
-    negative_one: str = bin(0)[2:].zfill(num_bits)
-    assert -1 == decode2coef(secpar=next_secpar, bd=next_bd, val=negative_one)
-    negative_two: str = negative_one[:-1] + '1'
-    assert -2 == decode2coef(secpar=next_secpar, bd=next_bd, val=negative_two)
-    negative_three: str = negative_two[:-2] + '10'
-    assert -3 == decode2coef(secpar=next_secpar, bd=next_bd, val=negative_three)
-    another_negative_one: str = negative_three[:-1] + '1'
-    assert -1 == decode2coef(secpar=next_secpar, bd=next_bd, val=another_negative_one)
-    another_negative_two: str = another_negative_one[:-3] + '100'
-    assert -2 == decode2coef(secpar=next_secpar, bd=next_bd, val=another_negative_two)
-    another_negative_three: str = another_negative_two[:-1] + '1'
-    assert -3 == decode2coef(secpar=next_secpar, bd=next_bd, val=another_negative_three)
-    a_one: str = '1' + negative_one[1:]
-    assert 1 == decode2coef(secpar=next_secpar, bd=next_bd, val=a_one)
-    a_two: str = a_one[:-1] + '1'
-    assert 2 == decode2coef(secpar=next_secpar, bd=next_bd, val=a_two)
-    a_three: str = a_two[:-2] + '10'
-    assert 3 == decode2coef(secpar=next_secpar, bd=next_bd, val=a_three)
-    another_one: str = a_three[:-1] + '1'
-    assert 1 == decode2coef(secpar=next_secpar, bd=next_bd, val=another_one)
-    another_two: str = another_one[:-3] + '100'
-    assert 2 == decode2coef(secpar=next_secpar, bd=next_bd, val=another_two)
-    another_three: str = another_two[:-1] + '1'
-    assert 3 == decode2coef(secpar=next_secpar, bd=next_bd, val=another_three)
-
-
-# @pytest.mark.skip
-def test_decode2coefs():
-    assert decode2coefs(secpar=1, bd=2, wt=2, val='110111') == [1, 2]
-
-
-# @pytest.mark.skip
-def test_decode2indices():
-    assert decode2indices(secpar=1, d=4, wt=2, val='00000') == [0, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='00001') == [0, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='00010') == [0, 3]
-    assert decode2indices(secpar=1, d=4, wt=2, val='00011') == [0, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='00100') == [0, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='00101') == [0, 3]
-    assert decode2indices(secpar=1, d=4, wt=2, val='00110') == [0, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='00111') == [0, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01000') == [1, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01001') == [1, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01010') == [1, 3]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01011') == [1, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01100') == [1, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01101') == [1, 3]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01110') == [1, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='01111') == [1, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10000') == [2, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10001') == [2, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10010') == [2, 3]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10011') == [2, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10100') == [2, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10101') == [2, 3]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10110') == [2, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='10111') == [2, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11000') == [3, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11001') == [3, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11010') == [3, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11011') == [3, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11100') == [3, 1]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11101') == [3, 2]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11110') == [3, 0]
-    assert decode2indices(secpar=1, d=4, wt=2, val='11111') == [3, 1]
-
-
-# @pytest.mark.skip
-def test_decode2polycoefs():
-    assert decode2polycoefs(secpar=1, d=4, bd=2, wt=2, val='11110110111') == {3: 1, 0: 2}
+def one_with_const_time() -> Polynomial:
+    return Polynomial(lp=lp_for_testing, coefs={0: 1})
 
 
 @pytest.fixture
-def lp_for_testing() -> LatticeParameters:
-    return LatticeParameters(pars=pars_for_testing)
-
-
-# @pytest.mark.skip
-def test_lattice_parameters(prim_rou_and_inv_for_testing, zetas_and_invs_for_testing, lp_for_testing):
-    w, w_inv = prim_rou_and_inv_for_testing
-    zetas, zeta_invs = zetas_and_invs_for_testing
-    foo = 'foo'
-    bar = 0
-    baz = -1
-    assert LatticeParameters(pars=pars_for_testing) == lp_for_testing
-    assert lp_for_testing.degree == degree_for_testing
-    assert lp_for_testing.length == length_for_testing
-    assert lp_for_testing.modulus == modulus_for_testing
-    assert lp_for_testing.rou == w
-    assert lp_for_testing.rou_inv == w_inv
-    assert lp_for_testing.zetas == zetas
-    assert lp_for_testing.zetas_invs == zeta_invs
-
-    bad_pars_for_testing: dict = deepcopy(pars_for_testing)
-    # Test failure of non-integer degree
-    bad_pars_for_testing['degree'] = foo
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # Test failure of zero degree
-    bad_pars_for_testing['degree'] = bar
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # Test failure of negative degree
-    bad_pars_for_testing['degree'] = baz
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # reset
-    bad_pars_for_testing['degree'] = degree_for_testing
-
-    # Test failure of non-integer length
-    bad_pars_for_testing['length'] = foo
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # Test failure of zero length
-    bad_pars_for_testing['length'] = bar
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # Test failure of negative length
-    bad_pars_for_testing['length'] = baz
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # reset
-    bad_pars_for_testing['length'] = length_for_testing
-
-    # Test failure of non-integer modulus
-    bad_pars_for_testing['modulus'] = foo
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # Test failure of zero modulus
-    bad_pars_for_testing['modulus'] = bar
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # Test failure of negative modulus
-    bad_pars_for_testing['modulus'] = baz
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-    # Test failure of unit modulus
-    bad_pars_for_testing['modulus'] = -baz
-    with pytest.raises(ValueError):
-        LatticeParameters(pars=bad_pars_for_testing)
-
-
-# @pytest.mark.skip
-def test_lattice_repr(lp_for_testing):
-    assert str(lp_for_testing) == str((degree_for_testing, length_for_testing, modulus_for_testing))
-
-
-# @pytest.mark.skip
-def test_lattice_eq(lp_for_testing):
-    assert LatticeParameters(pars=pars_for_testing) == lp_for_testing
-
-
-# @pytest.mark.skip
-def test_get_gen_bits_per_poly(lp_for_testing):
-    assert get_gen_bits_per_poly(secpar=1, lp=lp_for_testing, wt=1, bd=1) == ceil(
-        (ceil(log2(lp_for_testing.degree)) + 1 + ceil(log2(1)) + 1) / 8.0)
-    assert get_gen_bits_per_poly(secpar=1, lp=lp_for_testing, wt=2, bd=2) == ceil(
-        (ceil(log2(lp_for_testing.degree)) + (log2(lp_for_testing.degree) + 1) + 1 + ceil(log2(1)) + 1) / 8.0)
+def one_without_const_time() -> Polynomial:
+    return Polynomial(lp=lp_for_testing, coefs={0: 1}, const_time_flag=False)
 
 
 @pytest.fixture
-def one(lp_for_testing) -> Polynomial:
-    return Polynomial(pars=lp_for_testing, coefs={0: 1})
-
-
-@pytest.fixture
-def some_ran_lin_polys(lp_for_testing) -> List[Tuple[int, int, Polynomial]]:
+def some_ran_lin_polys_with_const_time() -> List[Tuple[int, int, Polynomial]]:
     result = []
     for i in range(2 * sample_size_for_random_tests):
         a = (2 * randbits(1) - 1) * (randbelow(lp_for_testing.halfmod) + 1)
         b = (2 * randbits(1) - 1) * (randbelow(lp_for_testing.halfmod) + 1)
-        result += [(a, b, Polynomial(pars=lp_for_testing, coefs={0: a, 1: b}))]
+        result += [(a, b, Polynomial(lp=lp_for_testing, coefs={0: a, 1: b}))]
+    return result
+
+
+@pytest.fixture
+def some_ran_lin_polys_without_const_time() -> List[Tuple[int, int, Polynomial]]:
+    result = []
+    for i in range(2 * sample_size_for_random_tests):
+        a = (2 * randbits(1) - 1) * (randbelow(lp_for_testing.halfmod) + 1)
+        b = (2 * randbits(1) - 1) * (randbelow(lp_for_testing.halfmod) + 1)
+        result += [(a, b, Polynomial(lp=lp_for_testing, coefs={0: a, 1: b}, const_time_flag=False))]
     return result
 
 
 # @pytest.mark.skip
-def test_polynomial_init(prim_rou_and_inv_for_testing, lp_for_testing, one, some_ran_lin_polys):
+def test_polynomial_init_with_const_time(one_with_const_time, some_ran_lin_polys_with_const_time):
     lp: LatticeParameters = lp_for_testing
-    w, w_inv = lp.rou, lp.rou_inv
-    assert w, w_inv == prim_rou_and_inv_for_testing
 
     # First, let's mess with the identity polynomial
-    assert one.ntt_representation == [1 for _ in range(n_for_testing)]
+    assert one_with_const_time.ntt_representation == [1 for _ in range(n_for_testing)]
 
     # Now let's make some random linear polynomials
-    for next_tuple in some_ran_lin_polys:
+    for next_tuple in some_ran_lin_polys_with_const_time:
         a, b, f = next_tuple
         assert -lp.halfmod <= a <= lp.halfmod
         assert -lp.halfmod <= b <= lp.halfmod
         assert isinstance(f, Polynomial)
-        assert f.ntt_representation == [
-            cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=a + b * w ** k) for k in range(lp.n)
-        ]
+        assert all((j - (a + b * lp.rou ** k)) % lp.modulus == 0 for k, j in zip(range(lp.n), f.ntt_representation))
 
 
 # @pytest.mark.skip
-def test_polynomial_eq(lp_for_testing, one, some_ran_lin_polys):
+def test_polynomial_init_without_const_time(one_without_const_time, some_ran_lin_polys_without_const_time):
+    lp: LatticeParameters = lp_for_testing
+
+    # First, let's mess with the identity polynomial
+    assert one_without_const_time.ntt_representation == [1 for _ in range(n_for_testing)]
+
+    # Now let's make some random linear polynomials
+    for next_tuple in some_ran_lin_polys_without_const_time:
+        a, b, f = next_tuple
+        assert -lp.halfmod <= a <= lp.halfmod
+        assert -lp.halfmod <= b <= lp.halfmod
+        assert isinstance(f, Polynomial)
+        assert all((j - (a + b * lp.rou ** k)) % lp.modulus == 0 for k, j in zip(range(lp.n), f.ntt_representation))
+
+
+# @pytest.mark.skip
+def test_polynomial_eq_with_const_time(one_with_const_time, some_ran_lin_polys_with_const_time):
     lp: LatticeParameters = lp_for_testing
 
     # First, let's make two identity polynomials and check they are equal.
-    another_one = Polynomial(pars=lp, coefs={0: 1})
-    assert one == another_one
+    another_one = Polynomial(lp=lp, coefs={0: 1})
+    assert one_with_const_time == another_one
 
     # Now check that if we change a single coefficient, the result changes
-    not_one = Polynomial(pars=lp, coefs={0: -1})
-    assert one != not_one
+    not_one = Polynomial(lp=lp, coefs={0: -1})
+    assert one_with_const_time != not_one
 
     # Now let's do the same with some random linear polynomials
-    for next_tuple in some_ran_lin_polys:
+    for next_tuple in some_ran_lin_polys_with_const_time:
         a, b, next_poly = next_tuple
-        another_poly = Polynomial(pars=lp, coefs={0: a, 1: b})
+        another_poly = Polynomial(lp=lp, coefs={0: a, 1: b})
         assert next_poly == another_poly
 
         # Now check that if we change a single coefficient, the result changes
-        not_another_poly = Polynomial(pars=lp, coefs={0: a, 1: -b})
+        not_another_poly = Polynomial(lp=lp, coefs={0: a, 1: -b})
+        assert next_poly != not_another_poly
+
+
+# @pytest.mark.skip
+def test_polynomial_eq_without_const_time(one_without_const_time, some_ran_lin_polys_without_const_time):
+    lp: LatticeParameters = lp_for_testing
+
+    # First, let's make two identity polynomials and check they are equal.
+    another_one = Polynomial(lp=lp, coefs={0: 1}, const_time_flag=False)
+    assert one_without_const_time == another_one
+
+    # Now check that if we change a single coefficient, the result changes
+    not_one = Polynomial(lp=lp, coefs={0: -1}, const_time_flag=False)
+    assert one_without_const_time != not_one
+
+    # Now let's do the same with some random linear polynomials
+    for next_tuple in some_ran_lin_polys_without_const_time:
+        a, b, next_poly = next_tuple
+        another_poly = Polynomial(lp=lp, coefs={0: a, 1: b}, const_time_flag=False)
+        assert next_poly == another_poly
+
+        # Now check that if we change a single coefficient, the result changes
+        not_another_poly = Polynomial(lp=lp, coefs={0: a, 1: -b}, const_time_flag=False)
         assert next_poly != not_another_poly
 
 
 @pytest.fixture
-def two(lp_for_testing) -> Polynomial:
-    return Polynomial(pars=lp_for_testing, coefs={0: 2})
+def two_with_const_time() -> Polynomial:
+    return Polynomial(lp=lp_for_testing, coefs={0: 2})
 
 
 @pytest.fixture
-def pairs_ran_lin_poly(some_ran_lin_polys) -> List[Tuple[Tuple[int, int, Polynomial], Tuple[int, int, Polynomial]]]:
+def two_without_const_time() -> Polynomial:
+    return Polynomial(lp=lp_for_testing, coefs={0: 2}, const_time_flag=False)
+
+
+@pytest.fixture
+def pairs_ran_lin_poly_with_const_time(some_ran_lin_polys_with_const_time) -> List[
+    Tuple[Tuple[int, int, Polynomial], Tuple[int, int, Polynomial]]]:
     result = []
     for i in range(0, sample_size_for_random_tests, 2):
-        result += [(some_ran_lin_polys[i], some_ran_lin_polys[i + 1])]
+        result += [(some_ran_lin_polys_with_const_time[i], some_ran_lin_polys_with_const_time[i + 1])]
     return result
 
 
 @pytest.fixture
-def pairs_of_random_polys_and_their_sums(
-        lp_for_testing,
-        pairs_ran_lin_poly
-) -> List[
+def pairs_ran_lin_poly_without_const_time(some_ran_lin_polys_without_const_time) -> List[
+    Tuple[Tuple[int, int, Polynomial], Tuple[int, int, Polynomial]]]:
+    result = []
+    for i in range(0, sample_size_for_random_tests, 2):
+        result += [(some_ran_lin_polys_without_const_time[i], some_ran_lin_polys_without_const_time[i + 1])]
+    return result
+
+
+@pytest.fixture
+def pairs_of_random_polys_and_their_sums_with_const_time(pairs_ran_lin_poly_with_const_time) -> List[
     Tuple[
         Tuple[int, int, Polynomial],
         Tuple[int, int, Polynomial],
@@ -542,24 +643,65 @@ def pairs_of_random_polys_and_their_sums(
     ]
 ]:
     result = []
-    for next_pair in pairs_ran_lin_poly:
+    for next_pair in pairs_ran_lin_poly_with_const_time:
         next_f, next_g = next_pair
         a_f, b_f, f = next_f
         a_g, b_g, g = next_g
         observed_h = f + g
-        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.coefficient_representation_and_norm_and_weight()
-        a_h = cent(
-            q=lp_for_testing.modulus, val=a_f + a_g, halfmod=lp_for_testing.halfmod, logmod=lp_for_testing.logmod
-        )
-        b_h = cent(
-            q=lp_for_testing.modulus, val=b_f + b_g, halfmod=lp_for_testing.halfmod, logmod=lp_for_testing.logmod
-        )
+        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.get_coef_rep()
+        a_h = (a_f + a_g) % lp_for_testing.modulus
+        if a_h > lp_for_testing.modulus // 2:
+            a_h -= lp_for_testing.modulus
+        b_h = (b_f + b_g) % lp_for_testing.modulus
+        if b_h > lp_for_testing.modulus // 2:
+            b_h -= lp_for_testing.modulus
         expected_h_coefs = {}
         if a_h != 0:
             expected_h_coefs[0] = a_h
         if b_h != 0:
             expected_h_coefs[1] = b_h
-        expected_h = Polynomial(pars=lp_for_testing, coefs=expected_h_coefs)
+        expected_h = Polynomial(lp=lp_for_testing, coefs=expected_h_coefs)
+        expected_h_norm = max(abs(a_h), abs(b_h))
+        expected_h_wt = len(expected_h_coefs)
+        result += [
+            (
+                next_f,
+                next_g,
+                (a_h, b_h, expected_h, expected_h_norm, expected_h_wt),
+                (obs_h_coefs, observed_h, obs_h_norm, obs_h_wt)
+            )
+        ]
+    return result
+
+
+@pytest.fixture
+def pairs_of_random_polys_and_their_sums_without_const_time(pairs_ran_lin_poly_without_const_time) -> List[
+    Tuple[
+        Tuple[int, int, Polynomial],
+        Tuple[int, int, Polynomial],
+        Tuple[int, int, Polynomial, int, int],
+        Tuple[dict, Polynomial, int, int]
+    ]
+]:
+    result = []
+    for next_pair in pairs_ran_lin_poly_without_const_time:
+        next_f, next_g = next_pair
+        a_f, b_f, f = next_f
+        a_g, b_g, g = next_g
+        observed_h = f + g
+        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.get_coef_rep()
+        a_h = (a_f + a_g) % lp_for_testing.modulus
+        if a_h > lp_for_testing.modulus // 2:
+            a_h -= lp_for_testing.modulus
+        b_h = (b_f + b_g) % lp_for_testing.modulus
+        if b_h > lp_for_testing.modulus // 2:
+            b_h -= lp_for_testing.modulus
+        expected_h_coefs = {}
+        if a_h != 0:
+            expected_h_coefs[0] = a_h
+        if b_h != 0:
+            expected_h_coefs[1] = b_h
+        expected_h = Polynomial(lp=lp_for_testing, coefs=expected_h_coefs)
         expected_h_norm = max(abs(a_h), abs(b_h))
         expected_h_wt = len(expected_h_coefs)
         result += [
@@ -574,13 +716,14 @@ def pairs_of_random_polys_and_their_sums(
 
 
 # @pytest.mark.skip
-def test_polynomial_add(lp_for_testing, one, two, pairs_of_random_polys_and_their_sums):
+def test_polynomial_add_with_const_time(one_with_const_time, two_with_const_time,
+                                        pairs_of_random_polys_and_their_sums_with_const_time):
     lp = lp_for_testing
     # First, let's make an identity polynomials and add it to itself
-    assert one + one == two
+    assert one_with_const_time + one_with_const_time == two_with_const_time
 
     # Now let's do some addition with some random linear polynomials (AND the unity)
-    for next_item in pairs_of_random_polys_and_their_sums:
+    for next_item in pairs_of_random_polys_and_their_sums_with_const_time:
         f_dat, g_dat, expected_h_dat, observed_h_dat = next_item
         a_f, b_f, f = f_dat
         a_g, b_g, g = g_dat
@@ -590,14 +733,38 @@ def test_polynomial_add(lp_for_testing, one, two, pairs_of_random_polys_and_thei
         assert len(obs_h_coefs) == 2
         assert 0 in obs_h_coefs
         assert 1 in obs_h_coefs
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=obs_h_coefs[0] - a_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=obs_h_coefs[1] - b_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=a_f + a_g - a_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=b_f + b_g - b_h) == 0
+        assert (obs_h_coefs[0] - a_h) % lp.modulus == 0
+        assert (obs_h_coefs[1] - b_h) % lp.modulus == 0
+        assert (a_f + a_g - a_h) % lp.modulus == 0
+        assert (b_f + b_g - b_h) % lp.modulus == 0
+
+
+# @pytest.mark.skip
+def test_polynomial_add_without_const_time(one_without_const_time, two_without_const_time,
+                                           pairs_of_random_polys_and_their_sums_without_const_time):
+    lp = lp_for_testing
+    # First, let's make an identity polynomials and add it to itself
+    assert one_without_const_time + one_without_const_time == two_without_const_time
+
+    # Now let's do some addition with some random linear polynomials (AND the unity)
+    for next_item in pairs_of_random_polys_and_their_sums_without_const_time:
+        f_dat, g_dat, expected_h_dat, observed_h_dat = next_item
+        a_f, b_f, f = f_dat
+        a_g, b_g, g = g_dat
+        a_h, b_h, exp_h, exp_h_norm, exp_h_wt = expected_h_dat
+        obs_h_coefs, obs_h, obs_h_norm, obs_h_wt = observed_h_dat
+        assert f + g == exp_h == obs_h
+        assert len(obs_h_coefs) == 2
+        assert 0 in obs_h_coefs
+        assert 1 in obs_h_coefs
+        assert (obs_h_coefs[0] - a_h) % lp.modulus == 0
+        assert (obs_h_coefs[1] - b_h) % lp.modulus == 0
+        assert (a_f + a_g - a_h) % lp.modulus == 0
+        assert (b_f + b_g - b_h) % lp.modulus == 0
 
 
 @pytest.fixture
-def pairs_of_random_polys_and_their_diffs(lp_for_testing, pairs_ran_lin_poly) -> \
+def pairs_of_random_polys_and_their_diffs_with_const_time(pairs_ran_lin_poly_with_const_time) -> \
         List[
             Tuple[
                 Tuple[int, int, Polynomial],
@@ -606,16 +773,12 @@ def pairs_of_random_polys_and_their_diffs(lp_for_testing, pairs_ran_lin_poly) ->
                 Tuple[Dict[int, int], Polynomial, int, int]]
         ]:
     result = []
-    for next_pair in pairs_ran_lin_poly:
+    for next_pair in pairs_ran_lin_poly_with_const_time:
         next_f, next_g = next_pair
         a_f, b_f, f = next_f
         a_g, b_g, g = next_g
-        a_h = cent(
-            q=lp_for_testing.modulus, val=a_f - a_g, halfmod=lp_for_testing.halfmod, logmod=lp_for_testing.logmod
-        )
-        b_h = cent(
-            q=lp_for_testing.modulus, val=b_f - b_g, halfmod=lp_for_testing.halfmod, logmod=lp_for_testing.logmod
-        )
+        a_h = (a_f - a_g) % lp_for_testing.modulus
+        b_h = (b_f - b_g) % lp_for_testing.modulus
         expected_h_coefs: dict = {}
         if a_h != 0:
             expected_h_coefs[0] = a_h
@@ -625,8 +788,46 @@ def pairs_of_random_polys_and_their_diffs(lp_for_testing, pairs_ran_lin_poly) ->
         expected_h_wt: int = len(expected_h_coefs)
 
         observed_h = f - g
-        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.coefficient_representation_and_norm_and_weight()
-        expected_h = Polynomial(pars=lp_for_testing, coefs=expected_h_coefs)
+        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.get_coef_rep()
+        expected_h = Polynomial(lp=lp_for_testing, coefs=expected_h_coefs)
+        result += [
+            (
+                next_f,
+                next_g,
+                (a_h, b_h, expected_h, expected_h_norm, expected_h_wt),
+                (obs_h_coefs, observed_h, obs_h_norm, obs_h_wt)
+            )
+        ]
+    return result
+
+
+@pytest.fixture
+def pairs_of_random_polys_and_their_diffs_without_const_time(pairs_ran_lin_poly_without_const_time) -> \
+        List[
+            Tuple[
+                Tuple[int, int, Polynomial],
+                Tuple[int, int, Polynomial],
+                Tuple[int, int, Polynomial, int, int],
+                Tuple[Dict[int, int], Polynomial, int, int]]
+        ]:
+    result = []
+    for next_pair in pairs_ran_lin_poly_without_const_time:
+        next_f, next_g = next_pair
+        a_f, b_f, f = next_f
+        a_g, b_g, g = next_g
+        a_h = (a_f - a_g) % lp_for_testing.modulus
+        b_h = (b_f - b_g) % lp_for_testing.modulus
+        expected_h_coefs: dict = {}
+        if a_h != 0:
+            expected_h_coefs[0] = a_h
+        if b_h != 0:
+            expected_h_coefs[1] = b_h
+        expected_h_norm: int = max(abs(expected_h_coefs[i]) for i in expected_h_coefs)
+        expected_h_wt: int = len(expected_h_coefs)
+
+        observed_h = f - g
+        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.get_coef_rep()
+        expected_h = Polynomial(lp=lp_for_testing, coefs=expected_h_coefs)
         result += [
             (
                 next_f,
@@ -639,10 +840,10 @@ def pairs_of_random_polys_and_their_diffs(lp_for_testing, pairs_ran_lin_poly) ->
 
 
 # @pytest.mark.skip
-def test_polynomial_sub(lp_for_testing, pairs_of_random_polys_and_their_diffs):
+def test_polynomial_sub_with_const_time(pairs_of_random_polys_and_their_diffs_with_const_time):
     lp: LatticeParameters = lp_for_testing
     # Now let's do some addition with some random linear polynomials (AND the unity)
-    for next_item in pairs_of_random_polys_and_their_diffs:
+    for next_item in pairs_of_random_polys_and_their_diffs_with_const_time:
         f_dat, g_dat, expected_h_dat, observed_h_dat = next_item
         a_f, b_f, f = f_dat
         a_g, b_g, g = g_dat
@@ -652,14 +853,34 @@ def test_polynomial_sub(lp_for_testing, pairs_of_random_polys_and_their_diffs):
         assert len(obs_h_coefs) == 2
         assert 0 in obs_h_coefs
         assert 1 in obs_h_coefs
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=obs_h_coefs[0] - a_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=obs_h_coefs[1] - b_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=a_f - a_g - a_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=b_f - b_g - b_h) == 0
+        assert (obs_h_coefs[0] - a_h) % lp.modulus == 0
+        assert (obs_h_coefs[1] - b_h) % lp.modulus == 0
+        assert (a_f - a_g - a_h) % lp.modulus == 0
+        assert (b_f - b_g - b_h) % lp.modulus == 0
+
+
+# @pytest.mark.skip
+def test_polynomial_sub_without_const_time(pairs_of_random_polys_and_their_diffs_without_const_time):
+    lp: LatticeParameters = lp_for_testing
+    # Now let's do some addition with some random linear polynomials (AND the unity)
+    for next_item in pairs_of_random_polys_and_their_diffs_without_const_time:
+        f_dat, g_dat, expected_h_dat, observed_h_dat = next_item
+        a_f, b_f, f = f_dat
+        a_g, b_g, g = g_dat
+        a_h, b_h, exp_h, exp_h_norm, exp_h_wt = expected_h_dat
+        obs_h_coefs, obs_h, obs_h_norm, obs_h_wt = observed_h_dat
+        assert f - g == exp_h == obs_h
+        assert len(obs_h_coefs) == 2
+        assert 0 in obs_h_coefs
+        assert 1 in obs_h_coefs
+        assert (obs_h_coefs[0] - a_h) % lp.modulus == 0
+        assert (obs_h_coefs[1] - b_h) % lp.modulus == 0
+        assert (a_f - a_g - a_h) % lp.modulus == 0
+        assert (b_f - b_g - b_h) % lp.modulus == 0
 
 
 @pytest.fixture
-def pairs_of_random_polys_and_their_products(lp_for_testing, pairs_ran_lin_poly) -> \
+def pairs_of_random_polys_and_their_products_with_const_time(pairs_ran_lin_poly_with_const_time) -> \
         List[
             Tuple[
                 Tuple[int, int, Polynomial],
@@ -669,22 +890,13 @@ def pairs_of_random_polys_and_their_products(lp_for_testing, pairs_ran_lin_poly)
             ]
         ]:
     result = []
-    for next_pair in pairs_ran_lin_poly:
+    for next_pair in pairs_ran_lin_poly_with_const_time:
         next_f, next_g = next_pair
         a_f, b_f, f = next_f
         a_g, b_g, g = next_g
-        a_h = cent(
-            q=lp_for_testing.modulus, halfmod=lp_for_testing.halfmod, logmod=lp_for_testing.logmod, val=a_f * a_g
-        )
-        b_h = cent(
-            q=lp_for_testing.modulus,
-            halfmod=lp_for_testing.halfmod,
-            logmod=lp_for_testing.logmod,
-            val=a_f * b_g + b_f * a_g
-        )
-        c_h = cent(
-            q=lp_for_testing.modulus, halfmod=lp_for_testing.halfmod, logmod=lp_for_testing.logmod, val=b_f * b_g
-        )
+        a_h = (a_f * a_g) % lp_for_testing.modulus
+        b_h = (a_f * b_g + b_f * a_g) % lp_for_testing.modulus
+        c_h = (b_f * b_g) % lp_for_testing.modulus
         exp_h_coefs = {}
         if a_h != 0:
             exp_h_coefs[0] = a_h
@@ -695,8 +907,49 @@ def pairs_of_random_polys_and_their_products(lp_for_testing, pairs_ran_lin_poly)
         exp_h_norm = max(abs(a_h), abs(b_h), abs(c_h))
         exp_h_wt = len(exp_h_coefs)
         observed_h = f * g
-        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.coefficient_representation_and_norm_and_weight()
-        expected_h = Polynomial(pars=lp_for_testing, coefs=exp_h_coefs)
+        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.get_coef_rep()
+        expected_h = Polynomial(lp=lp_for_testing, coefs=exp_h_coefs)
+        result += [
+            (
+                next_f,
+                next_g,
+                (a_f * a_g, a_f * b_g + a_g * b_f, b_f * b_g, expected_h, exp_h_norm, exp_h_wt),
+                (obs_h_coefs, observed_h, obs_h_norm, obs_h_wt)
+            )
+        ]
+    return result
+
+
+@pytest.fixture
+def pairs_of_random_polys_and_their_products_without_const_time(pairs_ran_lin_poly_without_const_time) -> \
+        List[
+            Tuple[
+                Tuple[int, int, Polynomial],
+                Tuple[int, int, Polynomial],
+                Tuple[int, int, int, Polynomial, int, int],
+                Tuple[Dict[int, int], Polynomial, int, int]
+            ]
+        ]:
+    result = []
+    for next_pair in pairs_ran_lin_poly_without_const_time:
+        next_f, next_g = next_pair
+        a_f, b_f, f = next_f
+        a_g, b_g, g = next_g
+        a_h = (a_f * a_g) % lp_for_testing.modulus
+        b_h = (a_f * b_g + b_f * a_g) % lp_for_testing.modulus
+        c_h = (b_f * b_g) % lp_for_testing.modulus
+        exp_h_coefs = {}
+        if a_h != 0:
+            exp_h_coefs[0] = a_h
+        if b_h != 0:
+            exp_h_coefs[1] = b_h
+        if c_h != 0:
+            exp_h_coefs[2] = c_h
+        exp_h_norm = max(abs(a_h), abs(b_h), abs(c_h))
+        exp_h_wt = len(exp_h_coefs)
+        observed_h = f * g
+        obs_h_coefs, obs_h_norm, obs_h_wt = observed_h.get_coef_rep()
+        expected_h = Polynomial(lp=lp_for_testing, coefs=exp_h_coefs)
         result += [
             (
                 next_f,
@@ -709,40 +962,72 @@ def pairs_of_random_polys_and_their_products(lp_for_testing, pairs_ran_lin_poly)
 
 
 # @pytest.mark.skip
-def test_polynomial_mul_small(lp_for_testing, one, pairs_of_random_polys_and_their_products):
+def test_polynomial_mul_small_with_const_time(one_with_const_time,
+                                              pairs_of_random_polys_and_their_products_with_const_time):
     lp = lp_for_testing
     # First, let's make an identity polynomials and add it to itself
-    assert one * one == one
+    assert one_with_const_time * one_with_const_time == one_with_const_time
 
     # Now let's do some addition with some random linear polynomials (AND the unity)
-    for next_item in pairs_of_random_polys_and_their_products:
+    for next_item in pairs_of_random_polys_and_their_products_with_const_time:
         f_dat, g_dat, expected_h_dat, observed_h_dat = next_item
         a_f, b_f, f = f_dat
         a_g, b_g, g = g_dat
         a_h, b_h, c_h, exp_h, exp_h_norm, exp_h_wt = expected_h_dat
         obs_h_coefs, obs_h, obs_h_norm, obs_h_wt = observed_h_dat
-        assert one * f == f
-        assert f * one == f
-        assert one * g == g
-        assert g * one == g
+        assert one_with_const_time * f == f
+        assert f * one_with_const_time == f
+        assert one_with_const_time * g == g
+        assert g * one_with_const_time == g
         assert f * g == exp_h == obs_h
         assert len(obs_h_coefs) == 3
         assert 0 in obs_h_coefs
         assert 1 in obs_h_coefs
         assert 2 in obs_h_coefs
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=obs_h_coefs[0] - a_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=obs_h_coefs[1] - b_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=obs_h_coefs[2] - c_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=a_f * a_g - a_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=a_f * b_g + b_f * a_g - b_h) == 0
-        assert cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=b_f * b_g - c_h) == 0
+        assert (obs_h_coefs[0] - a_h) % lp.modulus == 0
+        assert (obs_h_coefs[1] - b_h) % lp.modulus == 0
+        assert (obs_h_coefs[2] - c_h) % lp.modulus == 0
+        assert (a_f * a_g - a_h) % lp.modulus == 0
+        assert (a_f * b_g + b_f * a_g - b_h) % lp.modulus == 0
+        assert (b_f * b_g - c_h) % lp.modulus == 0
 
 
 # @pytest.mark.skip
-def test_polynomial_repr(some_ran_lin_polys):
-    for next_item in some_ran_lin_polys:
+def test_polynomial_mul_small_without_const_time(one_without_const_time,
+                                                 pairs_of_random_polys_and_their_products_without_const_time):
+    lp = lp_for_testing
+    # First, let's make an identity polynomials and add it to itself
+    assert one_without_const_time * one_without_const_time == one_without_const_time
+
+    # Now let's do some addition with some random linear polynomials (AND the unity)
+    for next_item in pairs_of_random_polys_and_their_products_without_const_time:
+        f_dat, g_dat, expected_h_dat, observed_h_dat = next_item
+        a_f, b_f, f = f_dat
+        a_g, b_g, g = g_dat
+        a_h, b_h, c_h, exp_h, exp_h_norm, exp_h_wt = expected_h_dat
+        obs_h_coefs, obs_h, obs_h_norm, obs_h_wt = observed_h_dat
+        assert one_without_const_time * f == f
+        assert f * one_without_const_time == f
+        assert one_without_const_time * g == g
+        assert g * one_without_const_time == g
+        assert f * g == exp_h == obs_h
+        assert len(obs_h_coefs) == 3
+        assert 0 in obs_h_coefs
+        assert 1 in obs_h_coefs
+        assert 2 in obs_h_coefs
+        assert (obs_h_coefs[0] - a_h) % lp.modulus == 0
+        assert (obs_h_coefs[1] - b_h) % lp.modulus == 0
+        assert (obs_h_coefs[2] - c_h) % lp.modulus == 0
+        assert (a_f * a_g - a_h) % lp.modulus == 0
+        assert (a_f * b_g + b_f * a_g - b_h) % lp.modulus == 0
+        assert (b_f * b_g - c_h) % lp.modulus == 0
+
+
+# @pytest.mark.skip
+def test_polynomial_repr_with_const_time(some_ran_lin_polys_with_const_time):
+    for next_item in some_ran_lin_polys_with_const_time:
         a, b, f = next_item
-        coef_rep, norm, wt = f.coefficient_representation_and_norm_and_weight()
+        coef_rep, norm, wt = f.get_coef_rep()
         assert norm == max(abs(a), abs(b))
         if a != 0 and b != 0:
             assert wt == 2
@@ -757,26 +1042,60 @@ def test_polynomial_repr(some_ran_lin_polys):
 
 
 # @pytest.mark.skip
-def test_polynomial_reset_vals(lp_for_testing, one):
-    x = deepcopy(one)
+def test_polynomial_repr_without_const_time(some_ran_lin_polys_without_const_time):
+    for next_item in some_ran_lin_polys_without_const_time:
+        a, b, f = next_item
+        coef_rep, norm, wt = f.get_coef_rep()
+        assert norm == max(abs(a), abs(b))
+        if a != 0 and b != 0:
+            assert wt == 2
+        elif a != 0 or b != 0:
+            assert wt == 1
+        else:
+            assert wt == 0
+
+        sorted_keys = sorted(list(coef_rep.keys()))
+        sorted_coefs = [(i, coef_rep[i]) for i in sorted_keys]
+        assert str(f) == str((sorted_coefs, norm, wt))
+
+
+# @pytest.mark.skip
+def test_polynomial_reset_vals_with_const_time(one_with_const_time):
+    x = deepcopy(one_with_const_time)
     x._reset_vals(coefs={0: 2})
     assert x.ntt_representation == [2 for _ in range(lp_for_testing.n)]
     x._reset_vals(coefs={0: 1})
-    assert x == one
+    assert x == one_with_const_time
 
 
 # @pytest.mark.skip
-def test_polynomial_get_coefs(lp_for_testing, one):
-    x = Polynomial(pars=lp_for_testing, coefs={1: 1})
-    f = one + x
-    assert f.coefficient_representation_and_norm_and_weight() == ({0: 1, 1: 1}, 1, 2)
+def test_polynomial_reset_vals_without_const_time(one_without_const_time):
+    x = deepcopy(one_without_const_time)
+    x._reset_vals(coefs={0: 2})
+    assert x.ntt_representation == [2 for _ in range(lp_for_testing.n)]
+    x._reset_vals(coefs={0: 1})
+    assert x == one_without_const_time
 
 
 # @pytest.mark.skip
-def test_polynomial_norm_and_weight(some_ran_lin_polys):
-    for next_item in some_ran_lin_polys:
+def test_polynomial_get_coefs_with_const_time(one_with_const_time):
+    x = Polynomial(lp=lp_for_testing, coefs={1: 1})
+    f = one_with_const_time + x
+    assert f.get_coef_rep() == ({0: 1, 1: 1}, 1, 2)
+
+
+# @pytest.mark.skip
+def test_polynomial_get_coefs_without_const_time(one_without_const_time):
+    x = Polynomial(lp=lp_for_testing, coefs={1: 1})
+    f = one_without_const_time + x
+    assert f.get_coef_rep() == ({0: 1, 1: 1}, 1, 2)
+
+
+# @pytest.mark.skip
+def test_polynomial_norm_and_weight_with_const_time(some_ran_lin_polys_with_const_time):
+    for next_item in some_ran_lin_polys_with_const_time:
         a, b, f = next_item
-        f_coefs, n, w = f.coefficient_representation_and_norm_and_weight()
+        f_coefs, n, w = f.get_coef_rep()
         assert n == max(abs(a), abs(b))
         if a != 0 and b != 0:
             assert w == 2
@@ -787,88 +1106,226 @@ def test_polynomial_norm_and_weight(some_ran_lin_polys):
 
 
 # @pytest.mark.skip
-def test_rand_poly(lp_for_testing):
-    f = randpoly(lp=lp_for_testing, bd=1, wt=2)
+def test_polynomial_norm_and_weight_without_const_time(some_ran_lin_polys_without_const_time):
+    for next_item in some_ran_lin_polys_without_const_time:
+        a, b, f = next_item
+        f_coefs, n, w = f.get_coef_rep()
+        assert n == max(abs(a), abs(b))
+        if a != 0 and b != 0:
+            assert w == 2
+        elif (a == 0 and b != 0) or (a != 0 and b == 0):
+            assert w == 1
+        else:
+            assert w == 0
+
+
+# @pytest.mark.skip
+def test_rand_poly_with_const_time():
+    f = random_polynomial(
+        secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT,
+        dist_pars=small_dist_pars, num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+        bits_to_decode=bits_to_decode_for_testing
+    )
     assert isinstance(f, Polynomial)
-    f_coefs, n, w = f.coefficient_representation_and_norm_and_weight()
-    assert n <= 1 and w <= 2
+    f_coefs, n, w = f.get_coef_rep()
+    assert n <= small_dist_pars['bd'] and w <= small_dist_pars['bd']
+    assert max(abs(f_coefs[i]) for i in f_coefs) <= n
+    assert len(f_coefs) <= w
+
+
+# @pytest.mark.skip
+def test_rand_poly_without_const_time():
+    f = random_polynomial(
+        secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT,
+        dist_pars=small_dist_pars, num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+        bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+    )
+    assert isinstance(f, Polynomial)
+    f_coefs, n, w = f.get_coef_rep()
+    assert n <= small_dist_pars['bd'] and w <= small_dist_pars['bd']
     assert max(abs(f_coefs[i]) for i in f_coefs) <= n
     assert len(f_coefs) <= w
 
 
 @pytest.fixture
-def some_random_polys_for_a_vector(lp_for_testing) -> List[Polynomial]:
+def some_random_polys_for_a_vector_with_const_time() -> List[Polynomial]:
     lp: LatticeParameters = lp_for_testing
-    return [randpoly(lp=lp, bd=lp.halfmod // 2, wt=lp.degree // 2) for _ in range(lp.length)]
+    return [random_polynomial(
+        secpar=secpar4testing, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+        bits_to_decode=bits_to_decode_for_testing
+    ) for _ in range(lp.length)]
+
+
+@pytest.fixture
+def some_random_polys_for_a_vector_without_const_time() -> List[Polynomial]:
+    lp: LatticeParameters = lp_for_testing
+    return [random_polynomial(
+        secpar=secpar4testing, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+        bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+    ) for _ in range(lp.length)]
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_init(lp_for_testing, some_random_polys_for_a_vector):
+def test_polynomial_vector_init_with_const_time(some_random_polys_for_a_vector_with_const_time):
     lp: LatticeParameters = lp_for_testing
-    assert PolynomialVector(pars=lp, entries=some_random_polys_for_a_vector)
-    v = PolynomialVector(pars=lp, entries=some_random_polys_for_a_vector)
-    tmp = v.coefficient_representation_and_norm_and_weight()
+    assert PolynomialVector(lp=lp, entries=some_random_polys_for_a_vector_with_const_time)
+    v = PolynomialVector(lp=lp, entries=some_random_polys_for_a_vector_with_const_time)
+    tmp = v.get_coef_rep()
     assert max(i[1] for i in tmp) <= lp.halfmod // 2
-    assert max(i[2] for i in tmp) <= lp.degree // 2
-    assert randpolyvec(lp=lp, bd=norm_for_testing, wt=weight_for_testing)
+    assert max(i[2] for i in tmp) <= lp.degree
+    assert random_polynomialvector(
+        secpar=secpar4testing, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+        bits_to_decode=bits_to_decode_for_testing
+    )
+
+
+# @pytest.mark.skip
+def test_polynomial_vector_init_without_const_time(some_random_polys_for_a_vector_without_const_time):
+    lp: LatticeParameters = lp_for_testing
+    assert PolynomialVector(lp=lp, entries=some_random_polys_for_a_vector_without_const_time, const_time_flag=False)
+    v = PolynomialVector(lp=lp, entries=some_random_polys_for_a_vector_without_const_time, const_time_flag=False)
+    tmp = v.get_coef_rep()
+    assert max(i[1] for i in tmp) <= lp.halfmod // 2
+    assert max(i[2] for i in tmp) <= lp.degree
+    assert random_polynomialvector(
+        secpar=secpar4testing, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+        bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+    )
 
 
 @pytest.fixture
-def some_random_polyvec(lp_for_testing, some_random_polys_for_a_vector) -> PolynomialVector:
-    return PolynomialVector(pars=lp_for_testing, entries=some_random_polys_for_a_vector)
+def some_random_polynomialvector_with_const_time(some_random_polys_for_a_vector_with_const_time) -> PolynomialVector:
+    return PolynomialVector(lp=lp_for_testing, entries=some_random_polys_for_a_vector_with_const_time)
 
 
 @pytest.fixture
-def some_random_polyvecs(lp_for_testing, some_random_polys_for_a_vector) -> List[PolynomialVector]:
-    return [PolynomialVector(pars=lp_for_testing, entries=some_random_polys_for_a_vector) for _ in
+def some_random_polynomialvector_without_const_time(
+        some_random_polys_for_a_vector_without_const_time) -> PolynomialVector:
+    return PolynomialVector(lp=lp_for_testing, entries=some_random_polys_for_a_vector_without_const_time,
+                            const_time_flag=False)
+
+
+@pytest.fixture
+def some_random_polynomialvectors_with_const_time(some_random_polys_for_a_vector_with_const_time) -> List[
+    PolynomialVector]:
+    return [PolynomialVector(lp=lp_for_testing, entries=some_random_polys_for_a_vector_with_const_time) for _ in
+            range(sample_size_for_random_tests)]
+
+
+@pytest.fixture
+def some_random_polynomialvectors_without_const_time(some_random_polys_for_a_vector_without_const_time) -> List[
+    PolynomialVector]:
+    return [PolynomialVector(lp=lp_for_testing, entries=some_random_polys_for_a_vector_without_const_time,
+                             const_time_flag=False) for _ in
             range(sample_size_for_random_tests)]
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_eq(lp_for_testing, some_random_polys_for_a_vector, some_random_polyvec):
+def test_polynomial_vector_eq_with_const_time(some_random_polys_for_a_vector_with_const_time,
+                                              some_random_polynomialvector_with_const_time):
     lp: LatticeParameters = lp_for_testing
-    v = PolynomialVector(pars=lp, entries=deepcopy(some_random_polys_for_a_vector))
-    assert v == some_random_polyvec
+    v = PolynomialVector(lp=lp, entries=deepcopy(some_random_polys_for_a_vector_with_const_time))
+    assert v == some_random_polynomialvector_with_const_time
+
+
+# @pytest.mark.skip
+def test_polynomial_vector_eq_without_const_time(some_random_polys_for_a_vector_without_const_time,
+                                                 some_random_polynomialvector_without_const_time):
+    lp: LatticeParameters = lp_for_testing
+    v = PolynomialVector(lp=lp, entries=deepcopy(some_random_polys_for_a_vector_without_const_time),
+                         const_time_flag=False)
+    assert v == some_random_polynomialvector_without_const_time
 
 
 @pytest.fixture
-def some_ran_polyvec_pairs_sums(lp_for_testing) -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
+def some_random_polynomialvector_pairs_sums_with_const_time() -> List[
+    Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
     result = []
     while len(result) < sample_size_for_random_tests:
-        f = randpolyvec(lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
-        g = randpolyvec(lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
+        f = random_polynomialvector(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing
+        )
+        g = random_polynomialvector(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing
+        )
         h = f + g
         result += [(f, g, h)]
     return result
 
 
 @pytest.fixture
-def some_ran_polyvec_pairs_diffs(lp_for_testing) -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
+def some_random_polynomialvector_pairs_sums_without_const_time() -> List[
+    Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
     result = []
     while len(result) < sample_size_for_random_tests:
-        f = randpolyvec(lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
-        g = randpolyvec(lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
+        f = random_polynomialvector(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        )
+        g = random_polynomialvector(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        )
+        h = f + g
+        result += [(f, g, h)]
+    return result
+
+
+@pytest.fixture
+def some_random_polynomialvector_pairs_diffs_with_const_time() -> List[
+    Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
+    result = []
+    while len(result) < sample_size_for_random_tests:
+        f = random_polynomialvector(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing
+        )
+        g = random_polynomialvector(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing
+        )
         h = f - g
         result += [(f, g, h)]
     return result
 
 
 @pytest.fixture
-def some_ran_scaling(lp_for_testing) -> List[Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
+def some_random_polynomialvector_pairs_diffs_without_const_time() -> List[
+    Tuple[PolynomialVector, PolynomialVector, PolynomialVector]]:
     result = []
     while len(result) < sample_size_for_random_tests:
-        f = randpoly(lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
-        g = randpolyvec(lp=lp_for_testing, bd=lp_for_testing.halfmod, wt=lp_for_testing.degree)
-        h = g ** f
+        f = random_polynomialvector(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        )
+        g = random_polynomialvector(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        )
+        h = f - g
         result += [(f, g, h)]
     return result
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_add(lp_for_testing, some_ran_polyvec_pairs_sums):
-    # TODO: Modify to exploit fixtures more effectively, this is spaghetti
+def test_polynomial_vector_add_with_const_time(some_random_polynomialvector_pairs_sums_with_const_time):
+    # TODO: Rewrite
     lp: LatticeParameters = lp_for_testing
-    for next_item in some_ran_polyvec_pairs_sums:
+    for next_item in some_random_polynomialvector_pairs_sums_with_const_time:
         f, g, observed_h = next_item
         for i, val in enumerate(zip(f.entries, g.entries, observed_h.entries)):
             ff, gg, hh = val
@@ -877,9 +1334,9 @@ def test_polynomial_vector_add(lp_for_testing, some_ran_polyvec_pairs_sums):
             assert all(
                 cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=diff[j]) == 0 for j in range(lp.degree)
             )
-        observed_h_coefs_and_norms_and_wts = observed_h.coefficient_representation_and_norm_and_weight()
-        f_coefs_and_norms_and_wts = f.coefficient_representation_and_norm_and_weight()
-        g_coefs_and_norms_and_wts = g.coefficient_representation_and_norm_and_weight()
+        observed_h_coefs_and_norms_and_wts = observed_h.get_coef_rep()
+        f_coefs_and_norms_and_wts = f.get_coef_rep()
+        g_coefs_and_norms_and_wts = g.get_coef_rep()
         for i, val in enumerate(zip(
                 f_coefs_and_norms_and_wts, g_coefs_and_norms_and_wts, observed_h_coefs_and_norms_and_wts
         )):
@@ -915,16 +1372,66 @@ def test_polynomial_vector_add(lp_for_testing, some_ran_polyvec_pairs_sums):
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_sub(lp_for_testing, some_ran_polyvec_pairs_diffs):
+def test_polynomial_vector_add_without_const_time(some_random_polynomialvector_pairs_sums_without_const_time):
+    # TODO: Rewrite
     lp: LatticeParameters = lp_for_testing
-    for next_item in some_ran_polyvec_pairs_diffs:
+    for next_item in some_random_polynomialvector_pairs_sums_without_const_time:
+        f, g, observed_h = next_item
+        for i, val in enumerate(zip(f.entries, g.entries, observed_h.entries)):
+            ff, gg, hh = val
+            diff = [ff.ntt_representation[j] + gg.ntt_representation[j] for j in range(lp.degree)]
+            diff = [diff[j] - hh.ntt_representation[j] for j in range(lp.degree)]
+            assert all(
+                cent(q=lp.modulus, halfmod=lp.halfmod, logmod=lp.logmod, val=diff[j]) == 0 for j in range(lp.degree)
+            )
+        observed_h_coefs_and_norms_and_wts = observed_h.get_coef_rep()
+        f_coefs_and_norms_and_wts = f.get_coef_rep()
+        g_coefs_and_norms_and_wts = g.get_coef_rep()
+        for i, val in enumerate(zip(
+                f_coefs_and_norms_and_wts, g_coefs_and_norms_and_wts, observed_h_coefs_and_norms_and_wts
+        )):
+            f_dat, g_dat, obs_h_dat = val
+            f_coefs, f_norm, f_wt = f_dat
+            g_coefs, g_norm, g_wt = g_dat
+            expected_h_coefs: Dict[int, int] = deepcopy(f_coefs)
+            obs_h_coefs, obs_h_norm, obs_h_wt = obs_h_dat
+            for j in g_coefs:
+                if j in expected_h_coefs:
+                    diff = expected_h_coefs[j] + g_coefs[j]
+                    expected_h_coefs[j] = cent(
+                        q=lp_for_testing.modulus,
+                        val=diff, halfmod=lp_for_testing.halfmod,
+                        logmod=lp_for_testing.logmod
+                    )
+                else:
+                    expected_h_coefs[j] = g_coefs[j]
+            expected_h_coefs = {i: expected_h_coefs[i] for i in expected_h_coefs if expected_h_coefs[i] != 0}
+            expected_h_norm: int = max(abs(expected_h_coefs[i]) for i in expected_h_coefs)
+            expected_h_wt: int = len(expected_h_coefs)
+            assert expected_h_wt == obs_h_wt
+            assert expected_h_norm == obs_h_norm
+            assert sorted(list(expected_h_coefs.keys())) == sorted(list(obs_h_coefs.keys()))
+            assert all(
+                0 == cent(
+                    q=lp_for_testing.modulus,
+                    val=expected_h_coefs[i] - obs_h_coefs[i],
+                    halfmod=lp_for_testing.halfmod,
+                    logmod=lp_for_testing.logmod
+                ) for i in expected_h_coefs
+            )
+
+
+# @pytest.mark.skip
+def test_polynomial_vector_sub_with_const_time(some_random_polynomialvector_pairs_diffs_with_const_time):
+    lp: LatticeParameters = lp_for_testing
+    for next_item in some_random_polynomialvector_pairs_diffs_with_const_time:
         f, g, observed_h = next_item
         observed_h_coefs_and_norms_and_weights = [
-            i.coefficient_representation_and_norm_and_weight() for i in observed_h.entries
+            i.get_coef_rep() for i in observed_h.entries
         ]
         for i in range(lp.length):
-            f_coefs, f_norm, f_wt = f.entries[i].coefficient_representation_and_norm_and_weight()
-            g_coefs, g_norm, g_wt = g.entries[i].coefficient_representation_and_norm_and_weight()
+            f_coefs, f_norm, f_wt = f.entries[i].get_coef_rep()
+            g_coefs, g_norm, g_wt = g.entries[i].get_coef_rep()
             obs_h_coefs, obs_h_norm, obs_h_wt = observed_h_coefs_and_norms_and_weights[i]
             exp_h_coefs = deepcopy(f_coefs)
             for j in g_coefs:
@@ -952,11 +1459,65 @@ def test_polynomial_vector_sub(lp_for_testing, some_ran_polyvec_pairs_diffs):
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_mul(lp_for_testing, one, some_random_polyvecs):
+def test_polynomial_vector_sub_without_const_time(some_random_polynomialvector_pairs_diffs_without_const_time):
+    lp: LatticeParameters = lp_for_testing
+    for next_item in some_random_polynomialvector_pairs_diffs_without_const_time:
+        f, g, observed_h = next_item
+        observed_h_coefs_and_norms_and_weights = [
+            i.get_coef_rep() for i in observed_h.entries
+        ]
+        for i in range(lp.length):
+            f_coefs, f_norm, f_wt = f.entries[i].get_coef_rep()
+            g_coefs, g_norm, g_wt = g.entries[i].get_coef_rep()
+            obs_h_coefs, obs_h_norm, obs_h_wt = observed_h_coefs_and_norms_and_weights[i]
+            exp_h_coefs = deepcopy(f_coefs)
+            for j in g_coefs:
+                if j in exp_h_coefs:
+                    diff = exp_h_coefs[j] - g_coefs[j]
+                    exp_h_coefs[j] = cent(
+                        q=lp_for_testing.modulus,
+                        val=diff, halfmod=lp_for_testing.halfmod,
+                        logmod=lp_for_testing.logmod
+                    )
+                else:
+                    exp_h_coefs[j] = -g_coefs[j]
+            exp_h_coefs = {i: exp_h_coefs[i] for i in exp_h_coefs if exp_h_coefs[i] != 0}
+            exp_h_norm = max(abs(exp_h_coefs[i]) for i in exp_h_coefs)
+            exp_h_wt = len(exp_h_coefs)
+
+            assert obs_h_norm == exp_h_norm
+            assert obs_h_wt == exp_h_wt
+            assert sorted(list(obs_h_coefs.keys())) == sorted(list(exp_h_coefs.keys()))
+            for j in obs_h_coefs:
+                diff = obs_h_coefs[j] - exp_h_coefs[j]
+                assert 0 == cent(
+                    q=lp_for_testing.modulus, val=diff, halfmod=lp_for_testing.halfmod, logmod=lp_for_testing.logmod
+                )
+
+
+# @pytest.mark.skip
+def test_polynomial_vector_mul_with_const_time(one_with_const_time, some_random_polynomialvectors_with_const_time):
     # tests the dot product
     lp: LatticeParameters = lp_for_testing
-    all_ones: PolynomialVector = PolynomialVector(pars=lp, entries=[deepcopy(one) for _ in range(lp.length)])
-    for v in some_random_polyvecs:
+    all_ones: PolynomialVector = PolynomialVector(lp=lp,
+                                                  entries=[deepcopy(one_with_const_time) for _ in range(lp.length)])
+    for v in some_random_polynomialvectors_with_const_time:
+        expected_sum: Polynomial = sum(x for x in v.entries)
+        observed_sum: Polynomial = all_ones * v
+        assert observed_sum == expected_sum
+        observed_sum: Polynomial = v * all_ones
+        assert observed_sum == expected_sum
+
+
+# @pytest.mark.skip
+def test_polynomial_vector_mul_without_const_time(one_without_const_time,
+                                                  some_random_polynomialvectors_without_const_time):
+    # tests the dot product
+    lp: LatticeParameters = lp_for_testing
+    all_ones: PolynomialVector = PolynomialVector(lp=lp,
+                                                  entries=[deepcopy(one_without_const_time) for _ in range(lp.length)],
+                                                  const_time_flag=False)
+    for v in some_random_polynomialvectors_without_const_time:
         expected_sum: Polynomial = sum(x for x in v.entries)
         observed_sum: Polynomial = all_ones * v
         assert observed_sum == expected_sum
@@ -965,7 +1526,7 @@ def test_polynomial_vector_mul(lp_for_testing, one, some_random_polyvecs):
 
 
 @pytest.fixture
-def some_random_linear_polyvecs(lp_for_testing) -> list:
+def some_random_linear_polynomialvectors_with_const_time() -> list:
     result = []
     while len(result) < sample_size_for_random_tests:
         next_result_entry = []
@@ -974,22 +1535,41 @@ def some_random_linear_polyvecs(lp_for_testing) -> list:
             a: int = (2 * randbits(1) - 1) * (randbelow(lp_for_testing.halfmod) + 1)
             b: int = (2 * randbits(1) - 1) * (randbelow(lp_for_testing.halfmod) + 1)
             if a != 0 or b != 0:
-                next_poly: Polynomial = Polynomial(pars=lp_for_testing, coefs={0: a, 1: b})
+                next_poly: Polynomial = Polynomial(lp=lp_for_testing, coefs={0: a, 1: b})
                 next_result_entry += [(a, b, next_poly)]
                 entries += [next_poly]
-        next_polyvec = PolynomialVector(pars=lp_for_testing, entries=entries)
-        next_result_entry += [next_polyvec]
+        next_polynomialvector = PolynomialVector(lp=lp_for_testing, entries=entries)
+        next_result_entry += [next_polynomialvector]
         result += [next_result_entry]
     return result
 
 
 @pytest.fixture
-def expected_polyvec_rep(some_random_linear_polyvecs) -> List[str]:
+def some_random_linear_polynomialvectors_without_const_time() -> list:
     result = []
-    for next_polyvec_data in some_random_linear_polyvecs:
+    while len(result) < sample_size_for_random_tests:
+        next_result_entry = []
+        entries = []
+        while len(entries) < lp_for_testing.length:
+            a: int = (2 * randbits(1) - 1) * (randbelow(lp_for_testing.halfmod) + 1)
+            b: int = (2 * randbits(1) - 1) * (randbelow(lp_for_testing.halfmod) + 1)
+            if a != 0 or b != 0:
+                next_poly: Polynomial = Polynomial(lp=lp_for_testing, coefs={0: a, 1: b}, const_time_flag=False)
+                next_result_entry += [(a, b, next_poly)]
+                entries += [next_poly]
+        next_polynomialvector = PolynomialVector(lp=lp_for_testing, entries=entries, const_time_flag=False)
+        next_result_entry += [next_polynomialvector]
+        result += [next_result_entry]
+    return result
+
+
+@pytest.fixture
+def expected_polynomialvector_rep_with_const_time(some_random_linear_polynomialvectors_with_const_time) -> List[str]:
+    result = []
+    for next_polynomialvector_data in some_random_linear_polynomialvectors_with_const_time:
         next_rep: str = '['
-        the_polyvec = next_polyvec_data[-1]  # last entry of next_polyvec_data is the polynomial vector itself
-        for i, val in enumerate(zip(the_polyvec.entries, next_polyvec_data[:-1])):
+        the_polynomialvector = next_polynomialvector_data[-1]
+        for i, val in enumerate(zip(the_polynomialvector.entries, next_polynomialvector_data[:-1])):
             # the_next_poly = val[0]
             next_tuple = val[1]
             a, b, also_the_next_poly = next_tuple
@@ -1000,7 +1580,35 @@ def expected_polyvec_rep(some_random_linear_polyvecs) -> List[str]:
                 the_coefs[1] = b
             the_norm = max(abs(a), abs(b))
             the_wt = len(the_coefs)
-            # assert the_next_poly.coefficient_representation_and_norm_and_weight() == the_coefs, the_norm, the_wt
+            # assert the_next_poly.get_coef_rep() == the_coefs, the_norm, the_wt
+            # assert also_the_next_poly == the_next_poly
+            the_coefs_sorted_keys = sorted(list(the_coefs.keys()))
+            sorted_coefs = [(i, the_coefs[i]) for i in the_coefs_sorted_keys]
+            next_rep += str((sorted_coefs, the_norm, the_wt)) + ', '
+        next_rep = next_rep[:-2] + ']'
+        result += [next_rep]
+    return result
+
+
+@pytest.fixture
+def expected_polynomialvector_rep_without_const_time(some_random_linear_polynomialvectors_without_const_time) -> List[
+    str]:
+    result = []
+    for next_polynomialvector_data in some_random_linear_polynomialvectors_without_const_time:
+        next_rep: str = '['
+        the_polynomialvector = next_polynomialvector_data[-1]
+        for i, val in enumerate(zip(the_polynomialvector.entries, next_polynomialvector_data[:-1])):
+            # the_next_poly = val[0]
+            next_tuple = val[1]
+            a, b, also_the_next_poly = next_tuple
+            the_coefs = {}
+            if a != 0:
+                the_coefs[0] = a
+            if b != 0:
+                the_coefs[1] = b
+            the_norm = max(abs(a), abs(b))
+            the_wt = len(the_coefs)
+            # assert the_next_poly.get_coef_rep() == the_coefs, the_norm, the_wt
             # assert also_the_next_poly == the_next_poly
             the_coefs_sorted_keys = sorted(list(the_coefs.keys()))
             sorted_coefs = [(i, the_coefs[i]) for i in the_coefs_sorted_keys]
@@ -1011,19 +1619,36 @@ def expected_polyvec_rep(some_random_linear_polyvecs) -> List[str]:
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_repr(some_random_linear_polyvecs, expected_polyvec_rep):
-    for next_pair in zip(some_random_linear_polyvecs, expected_polyvec_rep):
-        next_random_linear_polyvec, next_expected_rep = next_pair
-        assert str(next_random_linear_polyvec[-1]) == next_expected_rep
+def test_polynomial_vector_repr_with_const_time(some_random_linear_polynomialvectors_with_const_time,
+                                                expected_polynomialvector_rep_with_const_time):
+    for next_pair in zip(some_random_linear_polynomialvectors_with_const_time,
+                         expected_polynomialvector_rep_with_const_time):
+        next_random_linear_polynomialvector, next_expected_rep = next_pair
+        assert str(next_random_linear_polynomialvector[-1]) == next_expected_rep
 
 
 # @pytest.mark.skip
-def test_polynomial_vector_pow(lp_for_testing):
-    lp: LatticeParameters = lp_for_testing
+def test_polynomial_vector_repr_without_const_time(some_random_linear_polynomialvectors_without_const_time,
+                                                   expected_polynomialvector_rep_without_const_time):
+    for next_pair in zip(some_random_linear_polynomialvectors_without_const_time,
+                         expected_polynomialvector_rep_without_const_time):
+        next_random_linear_polynomialvector, next_expected_rep = next_pair
+        assert str(next_random_linear_polynomialvector[-1]) == next_expected_rep
 
+
+# @pytest.mark.skip
+def test_polynomial_vector_pow_with_const_time():
     for k in range(sample_size_for_random_tests):
-        v: Polynomial = randpoly(lp=lp, bd=17, wt=23)
-        u: PolynomialVector = randpolyvec(lp=lp, bd=7176, wt=384)
+        v: Polynomial = random_polynomial(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing
+        )
+        u: PolynomialVector = random_polynomialvector(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing
+        )
         expected_scaled_vector: PolynomialVector = deepcopy(u)
         expected_scaled_vector.entries = [i * v for i in expected_scaled_vector.entries]
         observed_scaled_vector = u ** v
@@ -1031,10 +1656,33 @@ def test_polynomial_vector_pow(lp_for_testing):
 
 
 # @pytest.mark.skip
-def test_polyvec_coefficient_representation_and_norm_and_weight(lp_for_testing):
-    f: PolynomialVector = randpolyvec(lp=lp_for_testing, bd=7176, wt=384)
+def test_polynomial_vector_pow_without_const_time():
+    for k in range(sample_size_for_random_tests):
+        v: Polynomial = random_polynomial(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        )
+        u: PolynomialVector = random_polynomialvector(
+            secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        )
+        expected_scaled_vector: PolynomialVector = deepcopy(u)
+        expected_scaled_vector.entries = [i * v for i in expected_scaled_vector.entries]
+        observed_scaled_vector = u ** v
+        assert expected_scaled_vector == observed_scaled_vector
+
+
+# @pytest.mark.skip
+def test_polynomialvector_coefficient_representation_and_norm_and_weight_with_const_time():
+    f: PolynomialVector = random_polynomialvector(
+        secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+        bits_to_decode=bits_to_decode_for_testing
+    )
     assert isinstance(f, PolynomialVector)
-    result = f.coefficient_representation_and_norm_and_weight()
+    result = f.get_coef_rep()
     for i in result:
         coef_rep, n, w = i
         assert n <= 7176
@@ -1044,10 +1692,48 @@ def test_polyvec_coefficient_representation_and_norm_and_weight(lp_for_testing):
 
 
 # @pytest.mark.skip
-def test_randpolyvec(lp_for_testing):
-    f: PolynomialVector = randpolyvec(lp=lp_for_testing, bd=7176, wt=384)
+def test_polynomialvector_coefficient_representation_and_norm_and_weight_without_const_time():
+    f: PolynomialVector = random_polynomialvector(
+        secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+        bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+    )
     assert isinstance(f, PolynomialVector)
-    results = f.coefficient_representation_and_norm_and_weight()
+    result = f.get_coef_rep()
+    for i in result:
+        coef_rep, n, w = i
+        assert n <= 7176
+        assert w <= 384
+        assert w == len(coef_rep)
+        assert n == max(abs(coef_rep[i]) for i in coef_rep)
+
+
+# @pytest.mark.skip
+def test_random_polynomialvector_with_const_time():
+    f: PolynomialVector = random_polynomialvector(
+        secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+        bits_to_decode=bits_to_decode_for_testing
+    )
+    assert isinstance(f, PolynomialVector)
+    results = f.get_coef_rep()
+    for i in results:
+        coef_rep, n, w = i
+        assert n <= 7176
+        assert w <= 384
+        assert len(coef_rep) == w
+        assert n == max(abs(coef_rep[i]) for i in coef_rep)
+
+
+# @pytest.mark.skip
+def test_random_polynomialvector_without_const_time():
+    f: PolynomialVector = random_polynomialvector(
+        secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
+        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
+        bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+    )
+    assert isinstance(f, PolynomialVector)
+    results = f.get_coef_rep()
     for i in results:
         coef_rep, n, w = i
         assert n <= 7176
@@ -1058,127 +1744,107 @@ def test_randpolyvec(lp_for_testing):
 
 # @pytest.mark.skip
 def test_decode_bitstring_to_coefficient():
-    # TODO: Unnecessarily thorough without keeping track of touched bounds, but doesn't test what is intended to be
-    #  tested by avoiding touched bounds this way... more clever test needed
-    secpar = 8
-    touched_bounds = dict()
-    for bound in range(1, small_q_for_testing // 2):
-        if bound not in touched_bounds:
-            touched_bounds[bound] = 1
-            if bound == 1:
-                outbits = 1
-                for expected_result in [-1, 1]:
-                    bitstring = bin((1 + expected_result) // 2)[2:]
-                    assert len(bitstring) == outbits
-                    observed_result = decode2coef(secpar, bound, bitstring)
-                    assert expected_result == observed_result
-            else:
-                outbits = ceil(log2(bound)) + 1 + secpar
-                for test_int in range(bound):
-                    for test_sign_bit in [0, 1]:
-                        expected_result = (2 * test_sign_bit - 1) * (1 + test_int)
-                        bitstring = str(test_sign_bit) + bin(test_int)[2:].zfill(outbits - 1)
-                        assert len(bitstring) == outbits
-                        observed_result = decode2coef(secpar, bound, bitstring)
-                        assert expected_result == observed_result
+    # TODO: Rewrite this
+    dist_pars_tmp = deepcopy(small_dist_pars)
+    for bound in range(1, lp_for_testing.modulus // 2, lp_for_testing.modulus // (2 ** 5)):
+        dist_pars_tmp['bd'] = bound
+        bits_to_decode = ceil(log2(bound)) + 1 + secpar4testing
+        for signum_bit in range(2):
+            for magnitude_minus_one in range(bound):
+                expected_result = (2 * signum_bit - 1) * (1 + magnitude_minus_one)
+                bitstring = str(signum_bit) + bin(magnitude_minus_one)[2:].zfill(bits_to_decode - 1)
+                observed_result = decode2coef(
+                    secpar=secpar4testing, lp=lp_for_testing, val=bitstring, distribution=UNIFORM_INFINITY_WEIGHT,
+                    dist_pars=dist_pars_tmp, bits_to_decode=bits_to_decode
+                )
+                assert expected_result == observed_result
 
 
 # @pytest.mark.skip
 def test_decode_bitstring_to_indices():
-    secpar = 8
-    degree = 8
-    weight = 3
-    # say we want [1, 0, 0, 1, 0, 0, 1, 0]
+    lp: LatticeParameters = LatticeParameters(degree=8, modulus=small_q_for_testing, length=3)
+    dist_pars: Dict[str, int] = {'bd': 1, 'wt': 3}
+    bits_to_indices_for_this_test: int = ceil(log2(lp.degree)) + 2 * (ceil(log2(lp.degree)) + secpar4testing)
+    # say we want indices 0, 3, 6.
     # first index is 0, so the first part of the bitstring is '000' (only need 3 bits for the first)
     # second index is 3, requires ceil(log2(8)) + secpar = 11 bits since we already picked an index.
     # but the remaining indices are [1, 2, 3, 4, 5, 6, 7]
     # to get 3 out of this, we need to access index 2!!!
-    # so we need an 11-bit integer == 2 mod 7. for fun, let's use 2 + 2**6 * 7 = 450 -> '00111000010`
+    # we need an 11-bit integer == 2 mod 7. for fun, let's use 2 + 2**6 * 7 = 450 -> '00111000010`
     # third index is 6, requires ceil(log2(8)) + secpar = 11 bits since we already picked two indices
     # but the remaining indices are [1, 2, 4, 5, 6, 7]
     # to get 6 out of this, we need to access index 4
-    # let's use 4 + 2**5 * 6 = 196 -> '00011000100'
+    # we need an 11-bit integer == 4 mod 6. for fun, let's use 4 + 2**5 * 6 = 196 -> '00011000100'
     # i.e. set our bitstring = '0000011100001000011000100' and we should get
     # [0, 3, 6].
-    test_bitstring = '0000011100001000011000100'
+    val = bin(0)[2:].zfill(ceil(log2(lp.degree)))
+    val += bin(2 + 2 ** 6 * 7)[2:].zfill(ceil(log2(lp.degree)) + secpar4testing)
+    val += bin(4 + 2 ** 5 * 6)[2:].zfill(ceil(log2(lp.degree)) + secpar4testing)
     expected_result = [0, 3, 6]
-    observed_result = decode2indices(secpar, degree, weight, test_bitstring)
+    observed_result = decode2indices(
+        secpar=secpar4testing, lp=lp, num_coefs=dist_pars['wt'], val=val, bits_to_indices=bits_to_indices_for_this_test
+    )
     assert expected_result == observed_result
 
 
 # @pytest.mark.skip
 def test_decode_bitstring_to_polynomial_coefficients():
-    secpar = 8
-    degree = 8
-    weight = 3
-    # Let's test the special case that the bound is 1
-    bound = 1
+    lp: LatticeParameters = LatticeParameters(degree=8, modulus=small_q_for_testing, length=3)
+
     # Let's construct the bitstring that should give us {0: 1, 3: 1, 6: -1}.
-    expected_result = {0: 1, 3: 1, 6: -1}
+    expected_coefs = [1, 1, -1]
+    expected_indices = [0, 3, 6]
+    expected_result = {idx: coef for idx, coef in zip(expected_indices, expected_coefs)}
     # expected coefficients will be [1, 1, -1]
     # expected indices will be [0, 3, 6]
-    # See test for indices, use '0000011100001000011000100'
-    test_bitstring_for_indices = '0000011100001000011000100'
-    # to get the coef 1, we decode from the bit 1, and to get the coef -1, we decode from the bit -1
-    test_bitstring_for_coefs = '110'
-    test_bitstring = test_bitstring_for_indices + test_bitstring_for_coefs
-    observed_result = decode2polycoefs(secpar, degree, bound, weight, test_bitstring)
-    assert expected_result == observed_result
+    val_for_first_index = bin(0)[2:].zfill(ceil(log2(lp.degree)))
+    val_for_second_index = bin(2 + 2 ** 6 * 7)[2:].zfill(ceil(log2(lp.degree)) + secpar4testing)
+    val_for_third_index = bin(4 + 2 ** 5 * 6)[2:].zfill(ceil(log2(lp.degree)) + secpar4testing)
+    val_for_indices = val_for_first_index + val_for_second_index + val_for_third_index
+    val_for_first_coef = '1' + '0' * (bits_to_decode_for_testing - 1)
+    val_for_second_coef = '1' + '0' * (bits_to_decode_for_testing - 1)
+    val_for_third_coef = '0' + '0' * (bits_to_decode_for_testing - 1)
+    val_for_coefs = val_for_first_coef + val_for_second_coef + val_for_third_coef
 
-    # Let's test the same expected_result but when the bound is 2
-    bound = 2
-    # since 1 + ceil(log2(bound)) + secpar = 10, we need 10 bits for each coef, first bit being the presign
-    # for the coef 1, we need an integer x such that 1 + (x % bound) == 1, so x % bound == 0
-    # so any even integer with at most 9 bits will work when bound = 2
-    # let's say x = 2**6, expanded to 9 bits, is '001000000' in binary
-    # then we prefix with the presign -> '1001000000'
-    # for the coef -1, the magnitude is some integer x such that 1 + (x % bound) == 1 again
-    # so again any even integer with at most 9 bits will work when bound = 2
-    # let's say x = 2**8 + 2**7 for fun -> '110000000'
-    # then since the presign of -1 is -1, which is decoded from the bit 0, we prefix with 0 -> '0110000000'
-    test_bitstring_for_coefs = '100100000010010000000110000000'
-    test_bitstring = test_bitstring_for_indices + test_bitstring_for_coefs
-    observed_result = decode2polycoefs(secpar, degree, bound, weight, test_bitstring)
-    assert expected_result == observed_result
+    val = val_for_indices + val_for_coefs
+
+    wt_for_this_test: int = 3
+    bits_to_indices: int = ceil(log2(lp.degree)) + (wt_for_this_test - 1) * (ceil(log2(lp.degree)) + secpar4testing)
+
+    for bd in range(1, small_q_for_testing // (2 ** 5)):
+        dist_pars: Dict[str, int] = {'bd': bd, 'wt': wt_for_this_test}
+        observed_result = decode2polycoefs(
+            secpar=secpar4testing, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=dist_pars, val=val,
+            num_coefs=dist_pars['wt'], bits_to_decode=bits_to_decode_for_testing, bits_to_indices=bits_to_indices
+        )
+        assert expected_result == observed_result
 
 
 # @pytest.mark.skip
 def test_decode_bitstring_to_coefficients():
     # Thorough test
-    secpar = 8
-    touched_bound_weight_pairs = dict()
-    for bound in range(1, modulus_for_testing // 2):
-        for weight in range(1, degree_for_testing):
-            if (bound, weight) in touched_bound_weight_pairs:
-                touched_bound_weight_pairs[(bound, weight)] = 1
-                if bound > 1:
-                    expected_result = list()
-                    while len(expected_result) < weight:
-                        next_int_sign = 2 * randbits(1) - 1
-                        next_int_mag = 1 + randbelow(bound)
-                        expected_result += [next_int_sign * next_int_mag]
-                    outbits = weight * (1 + ceil(log2(bound)) + secpar)
-                    bitstrings = list()
-                    for i in expected_result:
-                        tmp = bin(int(i > 0))[2:] + bin(abs(i) - 1)[2:].zfill(outbits // weight - 1)
-                        bitstrings += [tmp]
-                    assert len(bitstrings) == weight
-                    for i in bitstrings:
-                        assert len(i) == outbits // weight
-                    merged_bitstrings = ''
-                    for i in bitstrings:
-                        merged_bitstrings += i
-                    observed_result = decode2coefs(secpar, bound, weight, merged_bitstrings)
-                    assert expected_result == observed_result
-
-
-# @pytest.mark.skip
-def test_hash2bddpoly():
-    # TODO: High priority test, mock shake256 for this
-    pass
-
-
-# @pytest.mark.skip
-def test_hash2bddpolyvec():
-    # TODO: High priority test, mock shake256 for this
-    pass
+    for bound in range(2, modulus_for_testing // 2, modulus_for_testing // (2 ** 5)):
+        for weight in range(1, degree_for_testing, degree_for_testing // (2 ** 5)):
+            expected_result = list()
+            while len(expected_result) < weight:
+                next_int_sign = 2 * randbits(1) - 1
+                next_int_mag = 1 + randbelow(bound)
+                expected_result += [next_int_sign * next_int_mag]
+            num_bits = weight * (1 + ceil(log2(bound)) + secpar4testing)
+            vals = list()
+            for i in expected_result:
+                tmp = bin(int(i > 0))[2:] + bin(abs(i) - 1)[2:].zfill(num_bits // weight - 1)
+                vals += [tmp]
+            assert len(vals) == weight
+            for i in vals:
+                assert len(i) == num_bits // weight
+            merged_vals = ''
+            for i in vals:
+                merged_vals += i
+            bits_to_decode = ceil(log2(bound)) + 1 + secpar4testing
+            observed_result = decode2coefs(
+                secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT,
+                dist_pars={'bd': bound, 'wt': weight}, val=merged_vals, num_coefs=weight,
+                bits_to_decode=bits_to_decode
+            )
+            assert expected_result == observed_result
