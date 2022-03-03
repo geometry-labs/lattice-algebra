@@ -465,10 +465,7 @@ def test_decode2polycoefs(
     )
 
 
-exp_bits_per_poly_for_testing: int = int(log2(lp_for_testing.degree))
-exp_bits_per_poly_for_testing += (small_dist_pars['wt'] - 1) * (int(log2(lp_for_testing.degree)) + secpar4testing)
-exp_bits_per_poly_for_testing += small_dist_pars['wt']
-exp_bits_per_poly_for_testing += small_dist_pars['wt'] * (ceil(log2(small_dist_pars['bd'])) + secpar4testing)
+exp_bits_per_poly_for_testing: int = small_dist_pars['wt'] * bits_to_decode(secpar=secpar4testing, bd=small_dist_pars['bd']) + bits_to_indices(secpar=secpar4testing, degree=lp_for_testing.degree, wt=small_dist_pars['wt'])
 exp_bytes_per_poly_for_testing = ceil(exp_bits_per_poly_for_testing / 8)
 GET_GEN_BYTES_PER_POLY_CASES = [
     (

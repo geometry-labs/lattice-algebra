@@ -41,6 +41,14 @@ from hashlib import shake_256 as shake
 from typing import List, Dict, Tuple, Union
 
 
+def bits_to_indices(secpar: int, degree: int, wt: int) -> int:
+    return ceil(log2(degree)) + (wt - 1) * (ceil(log2(degree)) + secpar)
+
+
+def bits_to_decode(secpar: int, bd: int) -> int:
+    return ceil(log2(bd)) + 1 + secpar
+
+
 def is_prime(val: int) -> bool:
     """
     Test whether input integer is prime with the Sieve of Eratosthenes.
@@ -675,12 +683,9 @@ def get_gen_bytes_per_poly_inf_wt_unif(
             'Cannot get_gen_bytes_per_poly_inf_wt_unif without an integer weight on [1, 2, .., lp.degree - 1].')
     elif dist_pars['wt'] != num_coefs:
         raise ValueError('Cannot get_gen_bytes_per_poly_inf_wt_unif with num_coefs != weight.')
-    result = int(log2(lp.degree))
-    result += (dist_pars['wt'] - 1) * (int(log2(lp.degree)) + secpar)
-    result += dist_pars['wt']
-    if dist_pars['bd'] > 1:
-        result += dist_pars['wt'] * (ceil(log2(dist_pars['bd'])) + secpar)
-    return ceil(result / 8)
+    btd: int = bits_to_decode(secpar=secpar, bd=dist_pars['bd'])
+    bti: int = bits_to_indices(secpar=secpar, degree=lp.degree, wt=num_coefs)
+    return ceil((num_coefs * btd + bti)/8)
 
 
 def get_gen_bytes_per_poly(secpar: int, lp: LatticeParameters, distribution: str, dist_pars: Dict[str, int],
@@ -1037,11 +1042,10 @@ def hash2polynomial(secpar: int, lp: LatticeParameters, distribution: str, dist_
     :return:
     :rtype: Polynomial
     """
-    # num_bytes_for_hashing: int = get_gen_bytes_per_poly(
-    #     secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, num_coefs=num_coefs,
-    #     bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
-    # )
-    num_bytes_for_hashing: int = ceil((num_coefs * bits_to_decode + bits_to_indices) / 8)
+    num_bytes_for_hashing: int = get_gen_bytes_per_poly(
+        secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, num_coefs=num_coefs,
+        bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
+    )
     val: str = binary_digest(msg, num_bytes_for_hashing, salt)
     coefs: Dict[int, int] = decode2polycoefs(
         secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, val=val, num_coefs=num_coefs,
@@ -1264,11 +1268,10 @@ def decode2polynomialvector(
 ) -> PolynomialVector:
     if not is_bitstring(val):
         raise ValueError('Can only decode to a polynomial vector with an input bitstring val.')
-    # k: int = 8 * get_gen_bytes_per_poly(
-    #     secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, num_coefs=num_coefs,
-    #     bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
-    # )
-    k: int = num_coefs * bits_to_decode + bits_to_indices
+    k: int = 8 * get_gen_bytes_per_poly(
+        secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, num_coefs=num_coefs,
+        bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
+    )
     if len(val) < k * lp.length:
         raise ValueError(
             f'Cannot decode2polynomialvector without an input bitstring val with length at ' +
@@ -1386,11 +1389,10 @@ def hash2polynomialvector(
     :return: Call decode2polycoefs for length, create Polynomial for each, return a PolynomialVector with these entries
     :rtype: PolynomialVector
     """
-    # k: int = lp.length * get_gen_bytes_per_poly(
-    #     secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, num_coefs=num_coefs,
-    #     bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
-    # )
-    k: int = lp.length * (num_coefs * bits_to_decode + bits_to_indices)
+    k: int = lp.length * get_gen_bytes_per_poly(
+        secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, num_coefs=num_coefs,
+        bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
+    )
     val: str = binary_digest(msg=msg, num_bytes=k, salt=salt)
     return decode2polynomialvector(
         secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, val=val,
