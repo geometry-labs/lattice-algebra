@@ -537,7 +537,7 @@ def decode2coefs(
     elif bits_to_decode < 1:
         raise ValueError('Cannot decode2coefs without bits_to_decode, used to decode a single coefficient.')
     elif len(val) < num_coefs * bits_to_decode:
-        raise ValueError('Cannot decode2coefs without val with a length < bits_to_decode * num_coefs bitstring.')
+        raise ValueError(f'Cannot decode2coefs without val with length at least {num_coefs * bits_to_decode} but had {len(val)}')
     result = []
     for i in range(num_coefs):
         result += [decode2coef(
@@ -613,7 +613,7 @@ def decode2indices(secpar: int, lp: LatticeParameters, num_coefs: int, val: str,
 
 
 def decode2polycoefs(secpar: int, lp: LatticeParameters, distribution: str, dist_pars: Dict[str, int], val: str,
-                     num_coefs: int, bits_to_indices: int, bits_to_decode: int) -> Dict[int, int]:
+                     num_coefs: int, bits_to_ind: int, bits_to_coef: int) -> Dict[int, int]:
     """
     Decode an input string x to a dictionary with integer keys and values, suitable for use in creating a Polynomial
     object with norm bound bd and weight wt. We use the first ceil(log2(d)) + (wt-1) + (ceil(log2(d)) + secpar) bits to
@@ -634,10 +634,10 @@ def decode2polycoefs(secpar: int, lp: LatticeParameters, distribution: str, dist
     :type val: str
     :param num_coefs: Number of coefficients to generate
     :type num_coefs: int
-    :param bits_to_indices: Number of bits required to unbiasedly sample indices without replacement.
-    :type bits_to_indices: int
-    :param bits_to_decode: Number of bits required to unbiasedly sample an integer modulo the modulus in lp
-    :type bits_to_decode: int
+    :param bits_to_ind: Number of bits required to unbiasedly sample indices without replacement.
+    :type bits_to_ind: int
+    :param bits_to_coef: Number of bits required to unbiasedly sample an integer modulo the modulus in lp
+    :type bits_to_coef: int
 
     :return: Return a dict with integer keys and values, with wt distinct keys and all values in [-bd, ..., bd]
     :rtype: Dict[int, int]
@@ -654,17 +654,23 @@ def decode2polycoefs(secpar: int, lp: LatticeParameters, distribution: str, dist
             distribution=distribution,
             dist_pars=dist_pars,
             num_coefs=dist_pars['wt'],
-            bits_to_decode=bits_to_decode,
-            bits_to_indices=bits_to_indices):
+            bits_to_decode=bits_to_coef,
+            bits_to_indices=bits_to_ind):
         raise ValueError('Cannot decode2polycoefs without a sufficiently long bitstring val.')
-    x_for_indices: str = val[:bits_to_indices]
-    x_for_coefficients: str = val[bits_to_indices:]
+    elif bits_to_ind != bits_to_indices(secpar=secpar, degree=lp.degree, wt=dist_pars['wt']):
+        bti = bits_to_indices(secpar=secpar, degree=lp.degree, wt=dist_pars['wt'])
+        raise ValueError(f'Cannot decode2polycoefs without bits_to_ind == bits_to_indices, but had {bits_to_ind} != {bti}.')
+    elif bits_to_coef != bits_to_decode(secpar=secpar, bd=dist_pars['bd']):
+        btd = bits_to_decode(secpar=secpar, bd=dist_pars['bd'])
+        raise ValueError(f'Cannot decode2polycoefs without bits_to_coef == bits_to_decode, but had {bits_to_coef} != {btd}.')
+    x_for_indices: str = val[:bits_to_ind]
+    x_for_coefficients: str = val[bits_to_ind:]
     indices: List[int] = decode2indices(
-        secpar=secpar, lp=lp, bits_to_indices=bits_to_indices, num_coefs=num_coefs, val=x_for_indices
+        secpar=secpar, lp=lp, bits_to_indices=bits_to_ind, num_coefs=num_coefs, val=x_for_indices
     )
     coefs: List[int] = decode2coefs(
         secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars,
-        bits_to_decode=bits_to_decode, val=x_for_coefficients, num_coefs=num_coefs
+        bits_to_decode=bits_to_coef, val=x_for_coefficients, num_coefs=num_coefs
     )
     return {index: coefficient for index, coefficient in zip(indices, coefs)}
 
@@ -1005,16 +1011,8 @@ def decode2poly(
 ) -> Polynomial:
     return Polynomial(
         lp=lp,
-        coefs=decode2polycoefs(
-            secpar=secpar,
-            lp=lp,
-            distribution=distribution,
-            dist_pars=dist_pars,
-            val=val,
-            num_coefs=num_coefs,
-            bits_to_indices=bits_to_indices,
-            bits_to_decode=bits_to_decode
-        ),
+        coefs=decode2polycoefs(secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, val=val,
+                               num_coefs=num_coefs, bits_to_ind=bits_to_indices, bits_to_coef=bits_to_decode),
         const_time_flag=const_time_flag,
     )
 
@@ -1054,10 +1052,9 @@ def hash2polynomial(secpar: int, lp: LatticeParameters, distribution: str, dist_
         bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
     )
     val: str = binary_digest(msg, num_bytes_for_hashing, salt)
-    coefs: Dict[int, int] = decode2polycoefs(
-        secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, val=val, num_coefs=num_coefs,
-        bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
-    )
+    coefs: Dict[int, int] = decode2polycoefs(secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars,
+                                             val=val, num_coefs=num_coefs, bits_to_ind=bits_to_indices,
+                                             bits_to_coef=bits_to_decode)
     return Polynomial(lp=lp, coefs=coefs, const_time_flag=const_time_flag)
 
 
@@ -1090,12 +1087,16 @@ def random_polynomial(
     :return:
     :rtype: Polynomial
     """
-    num_bytes_for_hashing: int = get_gen_bytes_per_poly(
-        secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, num_coefs=num_coefs,
-        bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
-    )
-    num_bits_for_hashing: int = 8 * num_bytes_for_hashing
+    num_bits_for_hashing: int = 8 * get_gen_bytes_per_poly(
+        secpar=secpar,
+        lp=lp,
+        distribution=distribution,
+        dist_pars=dist_pars,
+        num_coefs=num_coefs,
+        bits_to_decode=bits_to_decode,
+        bits_to_indices=bits_to_indices)
     val: str = bin(randbits(num_bits_for_hashing))[2:].zfill(num_bits_for_hashing)
+
     return decode2poly(
         secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars, val=val, num_coefs=num_coefs,
         bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode, const_time_flag=const_time_flag
@@ -1287,16 +1288,9 @@ def decode2polynomialvector(
     entries = [
         Polynomial(
             lp=lp,
-            coefs=decode2polycoefs(
-                secpar=secpar,
-                lp=lp,
-                distribution=distribution,
-                dist_pars=dist_pars,
-                val=val[i * k: (i + 1) * k],
-                num_coefs=num_coefs,
-                bits_to_indices=bits_to_indices,
-                bits_to_decode=bits_to_decode,
-            ),
+            coefs=decode2polycoefs(secpar=secpar, lp=lp, distribution=distribution, dist_pars=dist_pars,
+                                   val=val[i * k: (i + 1) * k], num_coefs=num_coefs, bits_to_ind=bits_to_indices,
+                                   bits_to_coef=bits_to_decode),
             const_time_flag=const_time_flag,
         ) for i in range(lp.length)
     ]

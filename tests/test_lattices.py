@@ -464,16 +464,9 @@ def test_decode2polycoefs(
 ):
     mocker.patch("lattice_algebra.main.decode2indices", return_value=expected_indices)
     mocker.patch("lattice_algebra.main.decode2coefs", return_value=expected_coefs)
-    assert expected_output == decode2polycoefs(
-        secpar=secpar,
-        lp=lp,
-        distribution=dist,
-        dist_pars=dist_pars,
-        val=val,
-        num_coefs=num_coefs,
-        bits_to_indices=bits_to_indices,
-        bits_to_decode=bits_to_decode
-    )
+    assert expected_output == decode2polycoefs(secpar=secpar, lp=lp, distribution=dist, dist_pars=dist_pars, val=val,
+                                               num_coefs=num_coefs, bits_to_ind=bits_to_indices,
+                                               bits_to_coef=bits_to_decode)
 
 
 exp_bits_per_poly_for_testing: int = small_dist_pars['wt'] * bits_to_decode(secpar=secpar4testing, bd=small_dist_pars['bd']) + bits_to_indices(secpar=secpar4testing, degree=lp_for_testing.degree, wt=small_dist_pars['wt'])
@@ -1821,10 +1814,9 @@ def test_decode_bitstring_to_polynomial_coefficients():
 
     for bd in range(1, small_q_for_testing // (2 ** 5)):
         dist_pars: Dict[str, int] = {'bd': bd, 'wt': wt_for_this_test}
-        observed_result = decode2polycoefs(
-            secpar=secpar4testing, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=dist_pars, val=val,
-            num_coefs=dist_pars['wt'], bits_to_decode=bits_to_decode_for_testing, bits_to_indices=bits_to_indices
-        )
+        observed_result = decode2polycoefs(secpar=secpar4testing, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT,
+                                           dist_pars=dist_pars, val=val, num_coefs=dist_pars['wt'],
+                                           bits_to_ind=bits_to_indices, bits_to_coef=bits_to_decode_for_testing)
         assert expected_result == observed_result
 
 
@@ -1835,21 +1827,26 @@ def test_decode_bitstring_to_coefficients():
         for weight in range(1, degree_for_testing, degree_for_testing // (2 ** 5)):
             expected_result = list()
             while len(expected_result) < weight:
-                next_int_sign = 2 * randbits(1) - 1
-                next_int_mag = 1 + randbelow(bound)
-                expected_result += [next_int_sign * next_int_mag]
-            num_bits = weight * (1 + ceil(log2(bound)) + secpar4testing)
+                next_int_sign = 2 * randbits(1) - 1  # pick a random sign +/- 1
+                next_int_mag = 1 + randbelow(bound)  # ceil(log2(bound)) bits to define a magnitude 1, 2, ..., bound
+                expected_result += [next_int_sign * next_int_mag]  # put into list
+            num_bits_to_sample_sign_without_bias = 1
+            num_bits_to_sample_mag_without_bias = ceil(log2(bound)) + secpar4testing
+            num_bits_per_coef = num_bits_to_sample_mag_without_bias + num_bits_to_sample_sign_without_bias
+            num_bits = weight * num_bits_per_coef
+            num_bits = ceil(num_bits/8)*8
             vals = list()
             for i in expected_result:
-                tmp = bin(int(i > 0))[2:] + bin(abs(i) - 1)[2:].zfill(num_bits // weight - 1)
+                tmp = bin(int(i > 0))[2:] + bin(abs(i) - 1)[2:].zfill(num_bits_per_coef - 1)
                 vals += [tmp]
             assert len(vals) == weight
             for i in vals:
-                assert len(i) == num_bits // weight
-            merged_vals = ''
-            for i in vals:
-                merged_vals += i
+                assert len(i) == num_bits_per_coef
+            assert sum(len(i) for i in vals) <= num_bits
+            merged_vals = ''.join(vals)
+            merged_vals += bin(0)[2:].zfill(num_bits - len(merged_vals))
             bits_to_decode = ceil(log2(bound)) + 1 + secpar4testing
+            # assert len(merged_vals) == ceil(weight * bits_to_decode/8)*8
             observed_result = decode2coefs(
                 secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT,
                 dist_pars={'bd': bound, 'wt': weight}, val=merged_vals, num_coefs=weight,
