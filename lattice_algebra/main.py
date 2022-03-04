@@ -648,7 +648,14 @@ def decode2polycoefs(secpar: int, lp: LatticeParameters, distribution: str, dist
         raise ValueError('Cannot decode2polycoefs without an integer number of coefficients.')
     elif not is_bitstring(val):
         raise ValueError('Cannot decode2polycoefs without a bitstring val.')
-    elif len(val) < num_coefs * bits_to_decode + bits_to_indices:
+    elif len(val) < 8 * get_gen_bytes_per_poly(
+            secpar=secpar,
+            lp=lp,
+            distribution=distribution,
+            dist_pars=dist_pars,
+            num_coefs=dist_pars['wt'],
+            bits_to_decode=bits_to_decode,
+            bits_to_indices=bits_to_indices):
         raise ValueError('Cannot decode2polycoefs without a sufficiently long bitstring val.')
     x_for_indices: str = val[:bits_to_indices]
     x_for_coefficients: str = val[bits_to_indices:]

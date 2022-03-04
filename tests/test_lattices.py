@@ -421,9 +421,7 @@ DECODE2INDICES_CASES = [
 
 @pytest.mark.parametrize("secpar,dist,lp,dist_pars,val,num_coefs,expected_output", DECODE2INDICES_CASES)
 def test_decode2indices(secpar, dist, lp, dist_pars, val, num_coefs, expected_output):
-    observed_output = decode2indices(
-        secpar=secpar, lp=lp, num_coefs=dist_pars['wt'], val=val, bits_to_indices=bits_to_indices_for_testing
-    )
+    observed_output = decode2indices(secpar=secpar, lp=lp, num_coefs=dist_pars['wt'], val=val, bits_to_indices=bits_to_indices_for_testing)
     assert observed_output == expected_output
 
 
@@ -433,26 +431,33 @@ DECODE2POLYCOEFS_CASES = [
         lp_for_testing,
         UNIFORM_INFINITY_WEIGHT,
         {'wt': small_wt_for_testing, 'bd': small_bd_for_testing},
-        bin(
-            randbits(small_wt_for_testing * bits_to_decode_for_testing + bits_to_indices_for_testing)
-        )[2:].zfill(
-            small_wt_for_testing * bits_to_decode_for_testing + bits_to_indices_for_testing
-        ),
+        bin(randbits(8*get_gen_bytes_per_poly(
+            secpar=secpar4testing,
+            lp=lp_for_testing,
+            distribution=UNIFORM_INFINITY_WEIGHT,
+            dist_pars={'wt': small_wt_for_testing, 'bd': small_bd_for_testing},
+            num_coefs=small_wt_for_testing,
+            bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing)))[2:].zfill(8*get_gen_bytes_per_poly(
+            secpar=secpar4testing,
+            lp=lp_for_testing,
+            distribution=UNIFORM_INFINITY_WEIGHT,
+            dist_pars={'wt': small_wt_for_testing, 'bd': small_bd_for_testing},
+            num_coefs=small_wt_for_testing,
+            bits_to_indices=bits_to_indices_for_testing,
+            bits_to_decode=bits_to_decode_for_testing)),
         small_wt_for_testing,
         bits_to_indices_for_testing,
         bits_to_decode_for_testing,
         [(i + j) % lp_for_testing.degree for j in range(small_wt_for_testing)],
         [2 ** j % lp_for_testing.modulus for j in range(small_wt_for_testing)],
         {(i + j) % lp_for_testing.degree: 2 ** j % lp_for_testing.modulus for j in range(small_wt_for_testing)}
-    ) for i in range(2 ** 10)
+    )
+    for i in range(2 ** 10)
 ]
 
 
-@pytest.mark.parametrize(
-    "secpar,lp,dist,dist_pars,val,num_coefs,bits_to_indices," +
-    "bits_to_decode,expected_indices,expected_coefs,expected_output",
-    DECODE2POLYCOEFS_CASES
-)
+@pytest.mark.parametrize("secpar,lp,dist,dist_pars,val,num_coefs,bits_to_indices,bits_to_decode,expected_indices,expected_coefs,expected_output", DECODE2POLYCOEFS_CASES)
 def test_decode2polycoefs(
         mocker, secpar, lp, dist, dist_pars, val, num_coefs, bits_to_indices, bits_to_decode,
         expected_indices, expected_coefs, expected_output
@@ -460,8 +465,14 @@ def test_decode2polycoefs(
     mocker.patch("lattice_algebra.main.decode2indices", return_value=expected_indices)
     mocker.patch("lattice_algebra.main.decode2coefs", return_value=expected_coefs)
     assert expected_output == decode2polycoefs(
-        secpar=secpar, lp=lp, distribution=dist, dist_pars=dist_pars, val=val,
-        num_coefs=num_coefs, bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
+        secpar=secpar,
+        lp=lp,
+        distribution=dist,
+        dist_pars=dist_pars,
+        val=val,
+        num_coefs=num_coefs,
+        bits_to_indices=bits_to_indices,
+        bits_to_decode=bits_to_decode
     )
 
 
