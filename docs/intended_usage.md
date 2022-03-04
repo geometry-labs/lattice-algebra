@@ -17,7 +17,7 @@ We create polynomial vectors in ```V``` by using the ```PolynomialVector``` obje
 
 For example, if ```f``` and ```g``` are ```Polynomial``` and have the same lattice parameters, which has ```l = 2```, then we can instantiate the vector ```v = [f, g]``` by passing in ```entries=[f, g]```.
 
-From a ```Polynomial```, we can access the NTT representation at any time for almost no cost with the ```ntt_representation``` attribute. However, regaining the coefficient representation requires computing the inverse NTT, which is costly. Checking norms and weights of a ```Polynomial``` or a ```PolynomialVector``` requires the coefficient representation. We re-emphasize that this representation is costly to compute. Thus, it should only be computed once (and norms and weights should only be checked at the end of algorithms). We regain the coefficient representation of a ```Polynomial``` or a ```PolynomialVector``` object by calling the ```coefficient_representation_and_norm_and_weight``` function.
+From a ```Polynomial```, we can access the NTT representation at any time for almost no cost with the ```ntt_representation``` attribute. However, regaining the coefficient representation requires computing the inverse NTT, which is costly. Checking norms and weights of a ```Polynomial``` or a ```PolynomialVector``` requires the coefficient representation. We re-emphasize that this representation is costly to compute. Thus, it should only be computed once (and norms and weights should only be checked at the end of algorithms). We regain the coefficient representation of a ```Polynomial``` or a ```PolynomialVector``` object by calling the ```get_coef_rep``` function.
 
 ### Example of Arithmetic
 
@@ -32,7 +32,7 @@ Consider the vector space ```V``` defined with ```degree = 8```, ```modulus = 25
  7. ```g(X) = -5 + 105 * X ** 2 - 315 * X ** 4 + 231 * X ** 6```
  8. ```h(X) = -35 * X + 315 * X ** 3 - 693 * X ** 5 + 429 * X ** 7```
 
-In the following code, we instantiate the vector space ```V = R^3```, we instantiate these polynomials, we compute a few of their sums and products, we create two vectors of polynomials, ```v = [a, b, c]``` and ```u = [d, e, f]```, we compute the dot product ```v * u``` of these two vectors, we compare it to the sums and products we just computed by calling the ```coefficient_representation_and_norm_and_weight``` function, we scale ```v``` by ```g(X)``` and we scale ```u``` by ```h(X)```, we compute this linear combination of ```v``` and ```u```, and we print the coefficient representation, norm, and weight.
+In the following code, we instantiate the vector space ```V = R^3```, we instantiate these polynomials, we compute a few of their sums and products, we create two vectors of polynomials, ```v = [a, b, c]``` and ```u = [d, e, f]```, we compute the dot product ```v * u``` of these two vectors, we compare it to the sums and products we just computed by calling the ```get_coef_rep``` function, we scale ```v``` by ```g(X)``` and we scale ```u``` by ```h(X)```, we compute this linear combination of ```v``` and ```u```, and we print the coefficient representation, norm, and weight.
 
 ```
 from lattice_algebra import LatticeParameters, Polynomial, PolynomialVector
@@ -50,14 +50,14 @@ h = Polynomial(lp = lp, coefs = {1: -35, 3: 315, 5: -693, 7: 429})
 
 prods = [a * d, b * e, c * f]  # We can add, subtract, multiply, and use python built-in sum()
 sum_of_these = sum(prods)
-coef_rep_of_sum, n_sum, n_sum = sum_of_these.coefficient_representation_and_norm_and_weight()
+coef_rep_of_sum, n_sum, n_sum = sum_of_these.get_coef_rep()
 
 v = PolynomialVector(lp = lp, entries = [a, b, c]) # Make some polynomial vectors
 u = PolynomialVector(lp = lp, entries = [d, e, f])
 
 dot_product = v * u  # We can compute the dot product, which should match the sum above
 
-coef_rep_of_dot_prod, n_dot, w_dot = dot_product.coefficient_representation_and_norm_and_weight()
+coef_rep_of_dot_prod, n_dot, w_dot = dot_product.get_coef_rep()
 assert n_sum == n_dot
 assert w_sum == w_dot
 assert list(coef_rep_of_dot_prod.keys()) == list(coef_rep_of_sum.keys())
@@ -71,7 +71,7 @@ also_lin_combo = sum([i ** j for i, j in zip([v, u], [g, h])])  # more pythonica
 assert also_lin_combo == lin_combo
 
 # Lastly, let's print the coefficient representation, norm, and weight of this lin combo
-coef_rep, n, w = lin_combo.coefficient_representation_and_norm_and_weight()
+coef_rep, n, w = lin_combo.get_coef_rep()
 print(f"Coefficient representation of linear combination = {coef_rep}")
 print(f"Norm of linear combination = {n}")
 print(f"Weight of linear combination = {w}")
@@ -79,34 +79,34 @@ print(f"Weight of linear combination = {w}")
 
 ## Randomness and Hashing
 
-The library also contains functions ```randpoly```, ```hash2bddpoly```, ```randpolyvec```, and ```hash2bddpolyvec``` for generating random ```Polynomial``` and ```PolynomialVector``` objects, either with system randomness or by hashing a message. The output of these functions are uniformly random (at least up to a negligible difference) among the ```Polynomial``` and ```PolynomialVector``` objects with a specified infinity norm bound and Hamming weight. Randomness is generated using the ```secrets``` module.
+The library also contains functions ```random_polynomial```, ```hash2bddpoly```, ```random_polynomialvector```, and ```hash2bddpolyvec``` for generating random ```Polynomial``` and ```PolynomialVector``` objects, either with system randomness or by hashing a message. The output of these functions are uniformly random (at least up to a negligible difference) among the ```Polynomial``` and ```PolynomialVector``` objects with a specified infinity norm bound and Hamming weight. Randomness is generated using the ```secrets``` module.
 
 ### Example of Randomness and Hashing.
 
-In the following code, we first use the salt ```'SOME_SALT'``` to hash the string ```hello world``` to an instance of the ```Polynomial``` class, say ```x```, and an instance of the ```PolynomialVector``` class, say ```v```. In both cases, the polynomials in the hash output should have at most ```4``` non-zero coefficients since ```wt = 4```, and all of those should be in the list ```[-1, 0, 1]``` since ```bd = 1```. Then, we sample a new random ```Polynomial```, say ```y```, and a new random ```PolynomialVector```, say ```u```, using ```randpoly``` and ```randpolyvec```, respectively. Note that there are around ```2 ** 12``` possible outputs of ```randpoly``` and ```hash2bddpoly``` using these parameters, and around ```2 ** 36``` possible outputs of ```randpolyvec``` and ```hash2bddpolyvec```. In particular, the chance that we obtain ```x == y``` and ```v == u``` under these conditions is around ```2 ** -48```. While this is not cryptographically small, it is pretty durned small, so the following code should pass assertions.  
+In the following code, we first use the salt ```'SOME_SALT'``` to hash the string ```hello world``` to an instance of the ```Polynomial``` class, say ```x```, and an instance of the ```PolynomialVector``` class, say ```v```. In both cases, the polynomials in the hash output should have at most ```4``` non-zero coefficients since ```wt = 4```, and all of those should be in the list ```[-1, 0, 1]``` since ```bd = 1```. Then, we sample a new random ```Polynomial```, say ```y```, and a new random ```PolynomialVector```, say ```u```, using ```random_polynomial``` and ```random_polynomialvector```, respectively. Note that there are around ```2 ** 12``` possible outputs of ```random_polynomial``` and ```hash2bddpoly``` using these parameters, and around ```2 ** 36``` possible outputs of ```random_polynomialvector``` and ```hash2bddpolyvec```. In particular, the chance that we obtain ```x == y``` and ```v == u``` under these conditions is around ```2 ** -48```. While this is not cryptographically small, it is pretty durned small, so the following code should pass assertions.  
 
 ```
-from lattice_algebra import hash2bddpoly, hash2bddpolyvec, randpoly, randpolyvec
+from lattice_algebra import hash2bddpoly, hash2bddpolyvec, random_polynomial, random_polynomialvector
 
 lp = LatticeParameters(pars={'degree': 8, 'modulus': 257, 'length': 3})  # make V
 
 x = hash2bddpoly(secpar = lp.secpar, lp = lp, bd = 1, wt = 4, salt = 'SOME_SALT', m='hello world')
-coef_rep, n, w = x.coefficient_representation_and_norm_and_weight()
+coef_rep, n, w = x.get_coef_rep()
 assert n <= 1  # should always pass
 assert len(coef_rep) <= w <= 4  # should always pass
 
 v = hash2bddpoly(secpar = lp.secpar, lp = lp, bd = 1, wt = 4, salt = 'SOME_SALT', m='hello world')
-coef_rep, n, w = v.coefficient_representation_and_norm_and_weight()
+coef_rep, n, w = v.get_coef_rep()
 assert n <= 1  # should always pass
 assert len(coef_rep) <= w <= 4  # should always pass
 
-y = randpoly(secpar = lp.secpar, lp = lp, bd = 1, wt = 4)
-coef_rep, n, w = y.coefficient_representation_and_norm_and_weight()
+y = random_polynomial(secpar = lp.secpar, lp = lp, bd = 1, wt = 4)
+coef_rep, n, w = y.get_coef_rep()
 assert n <= 1  # should always pass
 assert len(coef_rep) <= w <= 4  # should always pass
 
-u = randpolyvec(secpar = lp.secpar, lp = lp, bd = 1, wt = 4)
-coef_rep, n, w = u.coefficient_representation_and_norm_and_weight()
+u = random_polynomialvector(secpar = lp.secpar, lp = lp, bd = 1, wt = 4)
+coef_rep, n, w = u.get_coef_rep()
 assert n <= 1  # should always pass
 sassert len(coef_rep) <= w <= 4  # should always pass
 
