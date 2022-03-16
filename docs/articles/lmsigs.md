@@ -47,9 +47,9 @@ that informally work as follows.
    a valid signature on the message $m$ with the public verification key $vk$.
 
 Since $\texttt{Setup}$ is run by all parties before participating and the inputs and outputs of $\texttt{Setup}$ are
-both public, and since all algorithms take $\lambda, \rho$ as input, it is admissable to neglect including $\lambda$ and
+both public, and since all algorithms take $\lambda, \rho$ as input, it is admissible to neglect including $\lambda$ and
 $\rho$ in the rest of our notation, and to ignore $\texttt{Setup}$ (unless the details become relevant). Also, we
-generally assume that the message set $M$ is the set of all finite-length bitstrings, $M = {0,1}^*$. We symbolically
+generally assume that the message set $M$ is the set of all finite-length bit strings, $M = {0,1}^*$. We symbolically
 represent the above digital signature scheme as follows.
 
 1. $\texttt{Keygen} -> (sk, vk) \in K_S \times K_V$
@@ -85,7 +85,7 @@ post-quantum signature vetting process).
 
 Next, Bob runs $\texttt{Keygen}$ to get some _challenge keys_ $(sk, vk)$. Bob sends $vk$ to Alice.
 
-Lastly, Alice attempts to output some message-signature pair $(\mu, \xi$. Alice's forgery is successful if $Verify(vk,
+Lastly, Alice attempts to output some message-signature pair $(\mu, \xi)$. Alice's forgery is successful if $Verify(vk,
 \mu, \xi) = 1$.
 
 The idea behind unforgeability is that any algorithm "Alice" should fail at this game except with negligible
@@ -144,7 +144,7 @@ clever" signature schemes.
 
 #### Example: A Schnorr-Like One-Time Signature Scheme
 
-Let $\mathbb{G}$ be an elliptiic curve group, written additively, with prime order $p$, and let $G$ be generator sampled
+Let $\mathbb{G}$ be an elliptic curve group, written additively, with prime order $p$, and let $G$ be generator sampled
 uniformly at random. Let $F:{0,1}^* \to \mathbb{Z}/p\mathbb{Z}$ be a random oracle. The following defines a one-time
 signature scheme that satisfies one-time existential unforgeability.
 
@@ -199,7 +199,7 @@ R_q, \beta_{ch})$.
 0. $\texttt{Setup}(\lambda) -> \rho$. Compute $d, q, l, k, \beta_{sk}, \beta_{ch}, \beta_v$ from $\lambda$, sample
    $\underline{a}$ from $V_q$ uniformly at random, and output $\rho = (d, q, l, F, k, \beta_{sk}, \beta_{ch}, \beta_v,
    \underline{a})$. The signing key set is $K_S = B(V_q, \beta_{sk}) \times B(V_q, \beta_{sk})$, the verification key
-   set is $K_V = R_q \times R_q$, the message set is length $k$ bitstrings $M = {0, 1}^k$, and the signature set is $S =
+   set is $K_V = R_q \times R_q$, the message set is length $k$ bit strings $M = {0, 1}^k$, and the signature set is $S =
    B(V_q, \beta_V)$.
 1. $\texttt{Keygen} -> (sk, vk)$. Sample $\underline{x}, \underline{y}$ uniformly at random and independently from $B(
    V_q, \beta_{sk})$. Define $X = \langle \underline{a}, \underline{x} \rangle$ and $Y = \langle \underline{a},
@@ -222,8 +222,8 @@ necessarily extract the keys exactly, but we can extract _some keys_ that have m
 
 But what hardness assumption is being violated here? Depending on the problem formulation, the difficulty that ensures
 unforgeability here comes from the _Ring Short Integer Solution_ problem. In particular, if I can extract
-$\underline{x}^\prime$ and $\underline{y}^\prime$ such that $\langle a, \underline{x}^\prime \rangle = \langle a,
-\underline{x}\rangle$ and $\langle a, \underline{y}^\prime \rangle = \langle a, \underline{y}\rangle$, yet
+$\underline{x}^\prime$ and $\underline{y}^\prime$ such that $\langle \underline{a}, \underline{x}^\prime \rangle = \langle \underline{a},
+\underline{x}\rangle$ and $\langle \underline{a}, \underline{y}^\prime \rangle = \langle \underline{a}, \underline{y}\rangle$, yet
 $\underline{x}^\prime \neq \underline{x}$ and $\underline{y}^\prime \neq \underline{y}$, then I can play around with
 some algebra to get a new key $\underline{t} \neq \underline{0}$ such that $\langle \underline{a}, \underline{t}\rangle
 = 0$ and yet $\|t\|_\infty$ is still small... and finding a short solution to $\langle \underline{a},
@@ -269,7 +269,7 @@ So one requirement for security is that $\frac{(2\beta_{sk}+1)^{2\ell d}}{q^{2*d
 Now, on the other hand, we may be able to use _sparse keys_ in order to make this inequality easier to satisfy. In
 particular, we can consider a variation of the Schnorr-Like approach to the lattice setting wherein private keys are not
 just polynomial vectors whose infinity norms are bounded by $\beta_{sk}$, but whose Hamming weights are also bounded by
-some $1 \leq \omega_{sk} \leq d$. We can similarly bound the Hamming weight of the signature challenge $c$ by some $1
+some $1 \leq \omega_{sk} \leq d$. We can similarly put a bound on the Hamming weight of the signature challenge $c$ by some $1
 \leq \omega_{ch} \leq d$, and we will consequently be bounding the Hamming weight of signatures by some $1 \leq \omega_
 {v} \leq d$. In this case, our inequality constraint changes to become a significantly more complicated inequality
 involving binomial coefficient computations, which we omit for the sake of readability. If we carefully select $\omega_
@@ -338,7 +338,7 @@ with the keys described in $I$ on the pre-pended memorandum message.
 
 We need to stash into each output both a verification key from some unforgeable signature scheme and also some way of
 measuring amounts. We can accomplish this with no privacy whatsoever by making an output key of the form $(vk, \alpha)$
-where $\alpha$ is some plaintext amount and $vk$ is a public verification key from the underlying signature scheme. In
+where $\alpha$ is a plaintext amount and $vk$ is a public verification key from the underlying signature scheme. In
 this case, the ```AMOUNT``` function merely forgets the verification key $vk$ and outputs $\alpha$.
 
 To summarize, using an unforgeable signature scheme as a sub-scheme, we use the following structure of general
@@ -350,7 +350,7 @@ transactions for a transparent cryptocurrency.
    canonical way.
 2. The list of new outputs ```O``` consists of verification key-amount pairs $(vk, \alpha)$ where $vk$ is a verification
    key from the sub-scheme and $\alpha$ is a positive plaintext amount. This is assumed to be ordered in a canonical
-   way. Thus, each ```(block_hash, transaction_id, output_index)``` refers to some output key $(vk, amt)$ in the
+   way. Thus, each ```(block_hash, transaction_id, output_index)``` refers to an output key $(vk, amt)$ in the
    validator's local copy of the blockchain.
 3. The fee ```FEE``` is a user-selected positive amount.
 4. The memo ```MEMO``` is a user-selected bitstring.
