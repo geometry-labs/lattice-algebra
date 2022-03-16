@@ -46,21 +46,26 @@ that informally work as follows.
 3. $\texttt{Verify}(\lambda, \rho, vk, \mu, \xi) \to b \in {0, 1}$. Output a bit $b$ indicating whether the signature is
    a valid signature on the message $m$ with the public verification key $vk$.
 
+This can be visualized as in the following diagram.
+
+![A digital signature scheme.](scheme.png)
+MITCHELL: Creative Commons see https://commons.wikimedia.org/wiki/File:Private_key_signing.svg
+
 Since $\texttt{Setup}$ is run by all parties before participating and the inputs and outputs of $\texttt{Setup}$ are
 both public, and since all algorithms take $\lambda, \rho$ as input, it is admissible to neglect including $\lambda$ and
-$\rho$ in the rest of our notation, and to ignore $\texttt{Setup}$ (unless the details become relevant). Also, we
-generally assume that the message set $M$ is the set of all finite-length bit strings, $M = {0,1}^*$. We symbolically
-represent the above digital signature scheme as follows.
+$\rho$ in the rest of our notation, and to ignore $\texttt{Setup}$ (unless the details become relevant). Also, we assume
+that the message set $M$ is the set of all $k$-length bit strings, $M = {0,1}^k$ where $k$ is an (integral valued)
+function of $\lambda$.
 
-1. $\texttt{Keygen} -> (sk, vk) \in K_S \times K_V$
-2. For any $(sk, vk) \in K_S \times K_V$, for any $\mu \in M$, $\texttt{Sign}((sk, vk), \mu) -> \xi \in S$.
-3. For any $vk \in K_V$, for any $\mu \in M$, for any $\xi \in S$, $\texttt{Verify}(vk, \mu, \xi) -> b \in {0, 1}$.
+Such a scheme, as described, is rather useless, without further conditions. To see why, consider the silly case that
+$\Xi = {0, 1}$. One can easily imagine an episode of Futurama taking place on the robot homeworld where all the robots
+authenticate themselves with single-bit signatures. Even Fry could forge a signature.
 
-Such a scheme, as described, is rather useless, without further conditions. To see why, consider the absurd reduction of
-the case that $S = {0}$. In this case, only one signature is possible, namely the zero-bit. Or, consider the case that
-$\texttt{Verify}$ always returns the bit $b=0$. In this case, every "signature" comes back invalid, even if it was
-honestly signed. Or, consider the case that $\texttt{Verify} always returns the $1$ bit. In this case, every signature
-is valid, so forgery is easy as pie.
+![If you want to be extra safe, check that there's a big block of jumbled characters at the bottom.](problyfine.png)
+
+Or, consider the case that $\texttt{Verify}$ always returns the bit $b=0$. In this case, every "signature"
+comes back invalid, even if it was honestly signed. Or, consider the case that $\texttt{Verify} always returns the $1$
+bit. A signature would mean nothing.
 
 This leads us to the notion of the security properties of digital signatures.
 
@@ -79,14 +84,14 @@ not correct is not guaranteed to even produce signatures that pass verification!
 
 Now consider what it means for a signature scheme to be _secure_; more precisely, consider the notion of unforgeability.
 If Alice attempts to forge a usual digital signature without knowing Bob's key, we can formalize this situation in a
-three-step process. First, Alice and Bob agree upon input and output of $\texttt{Setup}$, to recreate the common
-situation that Alice and Bob have agreed upon some publicly audited and cryptanalyzed signature scheme (cf. the NIST
-post-quantum signature vetting process).
+three-step process.
 
-Next, Bob runs $\texttt{Keygen}$ to get some _challenge keys_ $(sk, vk)$. Bob sends $vk$ to Alice.
-
-Lastly, Alice attempts to output some message-signature pair $(\mu, \xi)$. Alice's forgery is successful if $Verify(vk,
-\mu, \xi) = 1$.
+1. First, Alice and Bob agree upon input and output of $\texttt{Setup}$, to recreate the common situation that Alice and
+   Bob have agreed upon some publicly audited and cryptanalyzed signature scheme (cf. the NIST post-quantum signature
+   vetting process).
+2. Next, Bob runs $\texttt{Keygen}$ to get some _challenge keys_ $(sk, vk)$. Bob sends $vk$ to Alice.
+3. Lastly, Alice attempts to output some message-signature pair $(\mu, \xi)$. Alice's forgery is successful if $Verify(
+   vk, \mu, \xi) = 1$.
 
 The idea behind unforgeability is that any algorithm "Alice" should fail at this game except with negligible
 probability.
@@ -97,16 +102,23 @@ to be considered a forgery. Second, the game fails to capture the real-life situ
 signatures published under Bob's key before, perhaps posted on some public bulletin board. Thus, Alice is often granted
 the benefit of the doubt and is given access to a _signature oracle_. This allows her to obtain a signature from Bob's
 key on any message she likes... this models the real-life situation where Alice may be able to coerce or trick Bob into
-signing a message that Alice has selected. However, in this case, Alice certainly should not be allowed to win the game
-by passing off an oracle-generated signature as a forgery. Moreover, Alice generally only cares about forging
-signatures _for which she does not already have a signature._ Hence, Alice is generally not interested in winning the
-game even by re-using any of the messages that have already been signed by the oracle.
+signing a message that Alice has selected. In fact, we can be generous towards Alice and allow her to do so many times,
+and by adaptively selecting her oracle queries based on previous oracle responses. This way, if we can prove the scheme
+unforgeable, then even an Alice that can make adaptive oracle queries will fail at forging signatures. However, in this
+case, Alice certainly should not be allowed to win the game by passing off an oracle-generated signature as a forgery.
+Moreover, Alice generally only cares about forging signatures _for which she does not already have a signature_. Hence,
+Alice is generally not interested in winning the game even by re-using any of the messages that have already been signed
+by the oracle.
 
 This leads us to the following description of the _existential unforgeability experiment_. First, Alice and Bob agree
 upon the input and output of $\texttt{Setup}$. Next, Bob generates $(sk, vk) \leftarrow Keygen$ and sends $vk$ to Alice.
 Next, Bob grants Alice signature oracle access where she can query the oracle with any message $\mu$ and obtain a
-signature $\xi$ such that $Verify(vk, \mu, \xi) = 1$. Eventually, Alice outputs a message-signature pair $(\mu, \xi)$,
-succeeding if and only if the signing oracle was not queried with $mu$ and $Verify(vk, \mu, \xi) = 1$.
+signature $\xi$ such that $Verify(vk, \mu, \xi) = 1$, in any order she likes, and she can adaptively select $\mu$ based
+on previous oracle responses. Eventually, Alice outputs a message-signature pair $(\mu, \xi)$, succeeding if and only if
+the signing oracle was not queried with $mu$ and $Verify(vk, \mu, \xi) = 1$. This is visualized in the following
+diagram.
+
+![A graphical depiction of the existential unforgeability game.](unf.png)
 
 We then define a scheme to be _existentially unforgeable_ if, for any algorithm "Alice", the probability that Alice
 succeeds at this experiment is negligible.
@@ -154,7 +166,7 @@ signature scheme that satisfies one-time existential unforgeability.
 2. $\texttt{Sign}((sk, vk), \mu) -> \xi$. Compute $c = F(vk, \mu)$, parse $(x, y) \leftarrow sk$, set $\xi := x \cdot c
     + y (mod p)$, and output $\xi$.
 3. $Verify(vk, \mu, \xi) -> b$. Check that $\xi$ can be interpreted as an element of $\mathbb{Z}/p\mathbb{Z}$, compute
-   $c = F(vk, \mu)$, and output $1$ if and only if $\xi G == c X + Y$.
+   $c = F(vk, \mu)$, and output $1$ if and only if $\xi G = c X + Y$.
 
 The scheme is correct. Indeed, if $x, y, c \in \mathbb{Z}/p\mathbb{Z}$ (which is a field, and thus closed under addition
 and multiplication), then so is $x \cdot c + y$. So a semi-honestly computed $\xi$ is an integer modulo $p$ since $x$,
@@ -173,21 +185,24 @@ succeed with very low probability, or take a very long time to finish their task
 We can swap out the fundamental hardness assumption above with a different hardness assumption to get a different
 scheme; using a related approach, Lyubashevsky and Micciancio first proposed signatures designed (mostly) this way
 in [[1]](https://eprint.iacr.org/2013/746.pdf). In a lattice setting, we ditch the elliptic curve group in favor of
-lattices induced by rings of integers and their ideals. Let $\mathbb{Z}_q$ be short for the integers modulo $q$ for a
+lattices induced by rings of integers and their ideals. Let $\mathbb{Z}/q\mathbb{Z}$ be the integers modulo $q$ for a
 prime modulus $q$, let $d$ be a power of two integer, let $l$ be a natural number, let $R = \mathbb{Z}[X]/(X^d + 1)$ be
 a quotient ring of integer-coefficient polynomials, let $R_q$ be the quotient ring $R/qR$, let $V = R^\ell$ be the
 freely-generated $R$-module with length $l$, and let $V_q = R_q^\ell$ be the freely-generated $R_q$-module with length
-$\ell$. Note that $V$ and $V_q$ are also vector spaces over $\mathbb{Z}_q$ of dimension $d\cdot \ell$. Elements $f(X)
+$\ell$. Note that $V$ and $V_q$ are also vector spaces over $\mathbb{Z}/q\mathbb{Z}$ of dimension $d\cdot \ell$.
+Elements $f(X)
 \in R$ have an infinity norm; if $f(X) = f_0 + f_1 X + ... + f_{d-1} X^{d-1}$, then $\|f\|_\infty = \max(|f_i|)$. This
 definition extends to $V$, which is convenient.
 
 We can similarly extend this definition to $R_q$ and $V_q$, but at a cost. The cost we pay is in absolute homogeneity.
 In a vector space $U$ over a field $F$, for any scalar $c \in F$ and any vector $u \in U$, _absolute homogeneity_ is the
 property that $\|c \cdot u\| = |c| \|u\|$, where $|c|$ is computed by lifting $c$ from $F$ to $\mathbb{C}$, the complex
-numbers. If we carry our definition of $\|\cdot\|_\infty$ from $R$ to $R_q$, or from $V$ to $V_q$, we cannot use this
-statement to conclude anything about $c \cdot u$ when $c \in $R$ or $R_q$ except in the special cases that $c \in
-\mathbb{Z}/q\mathbb{Z}$. In fact, absolute homogeneity is relaxed, and we end up with a norm-like function with _
-absolute subhomogeneity_: $\| c \dot u\| \leq d \cdot |c| \|u\|$.
+numbers. If we carry our definition of $\|\cdot\|_{\infty}$ from $R$ to $R_q$, or from $V$ to $V_q$, we cannot use this
+statement to conclude anything about $c \cdot u$ when $c \in $R$ or $R_q$... except in the special cases that $c \in
+\mathbb{Z}/q\mathbb{Z}$.
+
+In fact, absolute homogeneity is relaxed, and we end up with a norm-like function with _absolute subhomogeneity_: $\| c
+\dot u\| \leq d \cdot |c| \|u\|$.
 
 For lack of a better term, we shall call such functions _subhomogeneous norms_, and if $T$ is a space that admits a
 sub-homogeneous norm, we shall call $T$ a _subhomogeneously normed space_.
@@ -199,15 +214,15 @@ R_q, \beta_{ch})$.
 0. $\texttt{Setup}(\lambda) -> \rho$. Compute $d, q, l, k, \beta_{sk}, \beta_{ch}, \beta_v$ from $\lambda$, sample
    $\underline{a}$ from $V_q$ uniformly at random, and output $\rho = (d, q, l, F, k, \beta_{sk}, \beta_{ch}, \beta_v,
    \underline{a})$. The signing key set is $K_S = B(V_q, \beta_{sk}) \times B(V_q, \beta_{sk})$, the verification key
-   set is $K_V = R_q \times R_q$, the message set is length $k$ bit strings $M = {0, 1}^k$, and the signature set is $S =
-   B(V_q, \beta_V)$.
+   set is $K_V = R_q \times R_q$, the message set is length $k$ bit strings $M = {0, 1}^k$, and the signature set is $S
+   = B(V_q, \beta_V)$.
 1. $\texttt{Keygen} -> (sk, vk)$. Sample $\underline{x}, \underline{y}$ uniformly at random and independently from $B(
    V_q, \beta_{sk})$. Define $X = \langle \underline{a}, \underline{x} \rangle$ and $Y = \langle \underline{a},
    \underline{y}\rangle$, where $\langle \cdot, cdot \rangle$ denotes the dot product between two vectors.
-2. $Sign((sk, vk), \mu) -> \xi$. Compute $c = F(vk, \mu)$ and output $\xi = \underline{x} \cdot c + \underline{y}$ where
+3. $Sign((sk, vk), \mu) -> \xi$. Compute $c = F(vk, \mu)$ and output $\xi = \underline{x} \cdot c + \underline{y}$ where
    $\cdot$ here denotes scaling the polynomial vector $\underline{x} \in B(Vq, \beta_{sk})$ with the polynomial $c \in
    B(R_q, \beta_{ch})$.
-3. $Verify(vk, \mu, \xi) -> b$. Check that \xi is an element of $B(Vq, \beta_V)$, compute $c = F(vk, \mu)$, and output
+4. $Verify(vk, \mu, \xi) -> b$. Check that \xi is an element of $B(Vq, \beta_V)$, compute $c = F(vk, \mu)$, and output
    $1$ if and only if $\langle \underline{a}, \xi\rangle = X \cdot c + Y$.
 
 This scheme may not always be correct, depending on how norms grow in $R_q$, although correctness is easily attained. In
@@ -222,12 +237,12 @@ necessarily extract the keys exactly, but we can extract _some keys_ that have m
 
 But what hardness assumption is being violated here? Depending on the problem formulation, the difficulty that ensures
 unforgeability here comes from the _Ring Short Integer Solution_ problem. In particular, if I can extract
-$\underline{x}^\prime$ and $\underline{y}^\prime$ such that $\langle \underline{a}, \underline{x}^\prime \rangle = \langle \underline{a},
-\underline{x}\rangle$ and $\langle \underline{a}, \underline{y}^\prime \rangle = \langle \underline{a}, \underline{y}\rangle$, yet
-$\underline{x}^\prime \neq \underline{x}$ and $\underline{y}^\prime \neq \underline{y}$, then I can play around with
-some algebra to get a new key $\underline{t} \neq \underline{0}$ such that $\langle \underline{a}, \underline{t}\rangle
-= 0$ and yet $\|t\|_\infty$ is still small... and finding a short solution to $\langle \underline{a},
-\underline{t}\rangle = 0$ is precisely the Ring Short Integer Solution problem.
+$\underline{x}^\prime$ and $\underline{y}^\prime$ such that $\langle \underline{a}, \underline{x}^\prime \rangle =
+\langle \underline{a}, \underline{x}\rangle$ and $\langle \underline{a}, \underline{y}^\prime \rangle = \langle
+\underline{a}, \underline{y}\rangle$, yet $\underline{x}^\prime \neq \underline{x}$ and $\underline{y}^\prime \neq
+\underline{y}$, then I can play around with some algebra to get a new key $\underline{t} \neq \underline{0}$ such that
+$\langle \underline{a}, \underline{t}\rangle = 0$ and yet $\|t\|_\infty$ is still small... and finding a short solution
+to $\langle \underline{a}, \underline{t}\rangle = 0$ is precisely the Ring Short Integer Solution problem.
 
 ### Optimizing One-Time Lattice-Based Signatures
 
@@ -269,8 +284,9 @@ So one requirement for security is that $\frac{(2\beta_{sk}+1)^{2\ell d}}{q^{2*d
 Now, on the other hand, we may be able to use _sparse keys_ in order to make this inequality easier to satisfy. In
 particular, we can consider a variation of the Schnorr-Like approach to the lattice setting wherein private keys are not
 just polynomial vectors whose infinity norms are bounded by $\beta_{sk}$, but whose Hamming weights are also bounded by
-some $1 \leq \omega_{sk} \leq d$. We can similarly put a bound on the Hamming weight of the signature challenge $c$ by some $1
-\leq \omega_{ch} \leq d$, and we will consequently be bounding the Hamming weight of signatures by some $1 \leq \omega_
+some $1 \leq \omega_{sk} \leq d$. We can similarly put a bound on the Hamming weight of the signature challenge $c$ by
+some $1 \leq \omega_{ch} \leq d$, and we will consequently be bounding the Hamming weight of signatures by some $1 \leq
+\omega_
 {v} \leq d$. In this case, our inequality constraint changes to become a significantly more complicated inequality
 involving binomial coefficient computations, which we omit for the sake of readability. If we carefully select $\omega_
 {sk}$, $\omega_{ch}$, and $\omega_{v}$, the above bound can be tightened or loosened. Using this technique, we can
@@ -338,8 +354,8 @@ with the keys described in $I$ on the pre-pended memorandum message.
 
 We need to stash into each output both a verification key from some unforgeable signature scheme and also some way of
 measuring amounts. We can accomplish this with no privacy whatsoever by making an output key of the form $(vk, \alpha)$
-where $\alpha$ is a plaintext amount and $vk$ is a public verification key from the underlying signature scheme. In
-this case, the ```AMOUNT``` function merely forgets the verification key $vk$ and outputs $\alpha$.
+where $\alpha$ is a plaintext amount and $vk$ is a public verification key from the underlying signature scheme. In this
+case, the ```AMOUNT``` function merely forgets the verification key $vk$ and outputs $\alpha$.
 
 To summarize, using an unforgeable signature scheme as a sub-scheme, we use the following structure of general
 transactions for a transparent cryptocurrency.
@@ -438,26 +454,31 @@ Schnorr-like approach to the lattice setting, let $\beta_t$ be some natural numb
    = \langle \underline{a}_0, \underline{x}_0\rangle$, $X_1 = \langle \underline{a}_0, \underline{x}_1\rangle$ and sets
    $sk = (KEM.sk, x_0, x_1)$. They then use $vk = (KEM.vk, X_0, X_1)$.
 2. An output is a tuple $(c, h_0, h_1, \alpha, \pi)$ where $c$ is a ciphertext from the KEM, $h$ and $g$ are
-   polynomials, $\alpha \in \mathbb{N}$ is a plaintext amount, and $\pi$ is a zero-knowledge proof of knowledge (ZKPOK)
-   that the sender knows some $\underline{z}_0, \underline{z}_1 \in B(V_q, \beta_{sk} + \beta_{t})$ such that $h_i =
-   \langle \underline{a}, \underline{z}_i\rangle$ for $i=0, 1$.
-3. An authorization to send an output is just a one-time signature using $(h_0, h_1)$ as the verification key.
+   polynomials, $\alpha \in \mathbb{N}$ is a plaintext amount, and $\pi$ is a zero-knowledge proof of knowledge (ZKPOK).
+   We will elaborate on this proof of knowledge in a moment.
+3. An authorization to send an output is just a one-time signature using $vk = (h_0, h_1)$.
 4. To send an amount $\alpha$ to another user with some $vk = (KEM.pk, X_0, X_1)$, a new output $(c, h_0, h_1, \alpha,
    \pi)$ is constructed in the following way. First, we encapsulate a new ephemeral key for $KEM.pk$ by computing $(c,
-   ek) <- KEM.Enc(KEM.pk)$. Next, we compute $\underline{b}_0, \underline{b}_1 = H_0(ek), H_1(ek)$ and $h_i = X_i +
-   \langle \underline{a}, \underline{b}_i\rangle$ for $i=0, 1$. Next, we compute a ZKPOK $\pi$ that the signer knows
-   elements $\underline{z}_i \in B(V_q, \beta_{sk} + \beta_t)$ such that $h_i = \langle \underline{a}, \underline{z}_
-   i\rangle$ for $i=0, 1$ (namely $\underline{z}_i = x_i + b_i$). Now the sender can publish $(c, h_0, h_1, \alpha, \pi)
-   $.
+   ek) <- KEM.Enc(KEM.pk)$. Next, we compute $\underline{b}_0 = H_0(ek)$ and $\underline{b}_1 = H_1(ek)$ and set $h_i =
+   X_i + \langle \underline{a}, \underline{b}_i\rangle$ for $i=0, 1$. Next, we compute a ZKPOK $\pi$. The sender can
+   publish $(c, h_0, h_1, \alpha, \pi)$.
 5. Upon hearing of a new transaction, a user can easily determine if a new output $(c, h_0, h_1, \alpha, \pi)$ is
-   addressed to their own $vk$ by checking if $KEM.Dec(sk, c) != FAIL$, can check that the sender actually knows the
-   pre-image of $h_0$ and $h_1$ by verifying $\pi$, and can manually check the plaintext amounts to verify that no money
-   was created or destroyed. To obtain the signing keys corresponding to the public verification key $(h_0, h_1)$, the
-   user decapsulates $c$ to obtain $ek^\prime$, computes $\underline{b}_i = H_i(ek)$, and then computes $\underline{z}_i
-   = \underline{x}_i + \underline{b}_i$.
+   addressed to their own $vk$ by checking if $KEM.Dec(KEM.sk, c) != FAIL$, can manually check the plaintext amounts to
+   verify that no money was created or destroyed. To obtain the signing keys corresponding to the public verification
+   key $vk = (h_0, h_1)$, the user takes their $KEM.sk$, decapsulates $c$ to obtain $ek$, computes $\underline{b}_i =
+   H_i(c, ek)$, and then computes $\underline{z}_i = \underline{x}_i + \underline{b}_i$. The user then verifies that
+   $h_i = \langle \underline{a}, \underline{z}_i \rangle$ for both $i=0, 1$.
 
-Note that for this scheme to be secure, we require all our hash functions to be cryptographically strong against finding
-second pre-images, the KEM to be secure, and the signature scheme to be unforgeable.
+Of course, the recipient can be assured that the extracted keys $(\underline{z}_0, \underline{z}_1)$ will work by
+checking the ZKPOK $\pi$. In particular, the ZKPOK $\pi$ in the output $(c, h_0, h_1, \alpha, \pi)$ must be a valid
+proof of knowledge of some secret $(KEM.pk, X_0, X_1)$ and a secret ephemeral key $ek$ such that $(c, ek) \leftarrow
+KEM.Enc(KEM.pk)$ and each $h_i = X_i + \langle \underline{a}, H_i(c, ek)\rangle$.
+
+Note that for this scheme to be secure, it is sufficient that all the following conditions hold.
+ 1. All our hash functions are cryptographically strong against finding second pre-images.
+ 2. The KEM is secure.
+ 3. The signature scheme is unforgeable.
+ 4. The proving system used to generate and validate the ZKPOK $\pi$ must be sound and complete.
 
 ### Conclusion
 
