@@ -150,15 +150,16 @@ query.
 
 One-time signature schemes are oftentimes very simple to describe and implement, which leads to straightforward proofs
 of security properties and mistake-resistant code. In the following examples, we show a case from classically secure
-cryptography and a similar case from quantum-resistant cryptography. As we can see from the descriptions below,
-describing the schemes is quite simple. Thus, implementing these schemes has fewer pitfalls than implementing more "
+cryptography and a similar case with lattice-based cryptography. As we can see from the descriptions below, describing
+the schemes is quite simple. Thus, implementing these schemes has fewer pitfalls than implementing more "
 clever" signature schemes.
 
 #### Example: A Schnorr-Like One-Time Signature Scheme
 
-Let $\mathbb{G}$ be an elliptic curve group, written additively, with prime order $p$, and let $G$ be generator sampled
-uniformly at random. Let $F:{0,1}^* \to \mathbb{Z}/p\mathbb{Z}$ be a random oracle. The following defines a one-time
-signature scheme that satisfies one-time existential unforgeability.
+In this section, we describe a Schnorr-like signature scheme in the elliptic curve setting. Let $\mathbb{G}$ be an
+elliptic curve group, written additively, with prime order $p$, and let $G$ be generator sampled uniformly at random.
+Let $F:{0,1}^* \to \mathbb{Z}/p\mathbb{Z}$ be a random oracle. The following defines a one-time signature scheme that
+satisfies one-time existential unforgeability.
 
 0. $\texttt{Setup}(\lambda) -> \rho$. Set $\rho = (\mathbb{G}, p, G, F)$.
 1. $\texttt{Keygen} -> (sk, vk)$. Sample $x, y \in \mathbb{Z}/p\mathbb{Z}$ independently and uniformly at random, set
@@ -266,11 +267,11 @@ a)$ has no other pre-images $a^\prime$. To ensure this probability is less than 
 
 The domain of our map is pairs of elements from $B(V_q, \beta_{sk})$. Thus, the size of the domain is the square of the
 size of $B(V_q, \beta_{sk})$. Moreover, an element of $B(V_q, \beta_{sk})$ is an $\ell$-vector of polynomials whose
-coefficients are absolutely bounded by $\beta_{sk}$... which means all coefficients are in the list
-$[-\beta_{sk}, -\beta_{sk} + 1, ..., \beta_{sk} - 1, \beta_{sk}]$, which clearly has $2 \beta_{sk} + 1$ elements in it.
-All such vectors are allowable, each has exactly $\ell$ coordinates, and each of those has exactly $d$ coefficients.
-There are necessarily $(2\beta_{sk} + 1)^{\ell d}$ such vectors, so there are $(2\beta_{sk}+ 1)^{2\ell d}$ elements in
-the domain of our map.
+coefficients are absolutely bounded by $\beta_{sk}$... which means all coefficients are in the list ${[}-\beta_{sk},
+-\beta_{sk} + 1, ..., \beta_{sk} - 1, \beta_{sk}}$, which clearly has $2 \beta_{sk} + 1$ elements in it. All such
+vectors are allowable, each has exactly $\ell$ coordinates, and each of those has exactly $d$ coefficients. There are
+necessarily $(2\beta_{sk} + 1)^{\ell d}$ such vectors, so there are $(2\beta_{sk}+ 1)^{2\ell d}$ elements in the domain
+of our map.
 
 On the other hand, the codomain of our map is tuples containing pairs of public keys and signatures. Each public key is
 a polynomial in $R_q$, and may be unbounded. So we have $q^{2d}$ possible public verification keys. On the other hand,
@@ -281,12 +282,12 @@ the codomain.
 So one requirement for security is that $\frac{(2\beta_{sk}+1)^{2\ell d}}{q^{2*d} (2\beta_{v} + 1)^{\ell d}} >
 2^\lambda$.
 
-Now, on the other hand, we may be able to use _sparse keys_ in order to make this inequality easier to satisfy. In
-particular, we can consider a variation of the Schnorr-Like approach to the lattice setting wherein private keys are not
-just polynomial vectors whose infinity norms are bounded by $\beta_{sk}$, but whose Hamming weights are also bounded by
-some $1 \leq \omega_{sk} \leq d$. We can similarly put a bound on the Hamming weight of the signature challenge $c$ by
-some $1 \leq \omega_{ch} \leq d$, and we will consequently be bounding the Hamming weight of signatures by some $1 \leq
-\omega_
+Now, on the other hand, we may be able to use _sparse keys_ in order to make this inequality easier to satisfy. This
+technique is referred to in the CRYSTALS-Dilithium documentation as "hashing to a ball."  In particular, we can consider
+a variation of the Schnorr-Like approach to the lattice setting wherein private keys are not just polynomial vectors
+whose infinity norms are bounded by $\beta_{sk}$, but whose Hamming weights are also bounded by some $1 \leq \omega_{sk}
+\leq d$. We can similarly put a bound on the Hamming weight of the signature challenge $c$ by some $1 \leq \omega_{ch}
+\leq d$, and we will consequently be bounding the Hamming weight of signatures by some $1 \leq \omega_
 {v} \leq d$. In this case, our inequality constraint changes to become a significantly more complicated inequality
 involving binomial coefficient computations, which we omit for the sake of readability. If we carefully select $\omega_
 {sk}$, $\omega_{ch}$, and $\omega_{v}$, the above bound can be tightened or loosened. Using this technique, we can
@@ -475,10 +476,11 @@ proof of knowledge of some secret $(KEM.pk, X_0, X_1)$ and a secret ephemeral ke
 KEM.Enc(KEM.pk)$ and each $h_i = X_i + \langle \underline{a}, H_i(c, ek)\rangle$.
 
 Note that for this scheme to be secure, it is sufficient that all the following conditions hold.
- 1. All our hash functions are cryptographically strong against finding second pre-images.
- 2. The KEM is secure.
- 3. The signature scheme is unforgeable.
- 4. The proving system used to generate and validate the ZKPOK $\pi$ must be sound and complete.
+
+1. All our hash functions are cryptographically strong against finding second pre-images.
+2. The KEM is secure.
+3. The signature scheme is unforgeable.
+4. The proving system used to generate and validate the ZKPOK $\pi$ must be sound and complete.
 
 ### Conclusion
 

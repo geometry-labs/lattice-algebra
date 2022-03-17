@@ -28,63 +28,105 @@ by compactly describing several signatures in one verifiable aggregated signatur
 
 But, to tell the story of aggregatable signatures requires that we tell the story of usual digital signatures.
 
-A digital signature scheme is a tuple of algorithms $(Setup, Keygen, Sign, Verify)$ which informally work as follows.
+A digital signature scheme is a tuple of algorithms $(\texttt{Setup}, \texttt{Keygen}, \texttt{Sign}, \texttt{Verify})$
+which informally work as follows.
 
 0. $\texttt{Setup}(\lambda) \to \rho$ inputs a security parameter $\lambda$ and outputs some public parameters, $\rho$,
    which are both taken as input in all other algorithms. As in the previous part of this article series, we drop
    $\lambda$ and $\rho$ from our notation to be concise, taking $\texttt{Setup}$ for granted. Usually, $\rho$ contains a
-   description of the signing key set $SK$, the verification key set $VK$, the message set $M$, and the signature set
-   $S$.
-1. $\texttt{Keygen} \to (sk, vk) \in SK \times VK$. Output a new random keypair $(sk, vk)$ where $sk$ is a secret
+   description of the signing key set $K_S$, the verification key set $K_V$, the message set $M$, and the signature set
+   $\Xi$.
+1. $\texttt{Keygen} \to (sk, vk) \in K_S \times K_V$. Output a new random keypair $(sk, vk)$ where $sk$ is a secret
    signing key and $vk$ is a public verification key.
-2. $\texttt{Sign}((sk, vk), \mu) \to \xi \in S$. Input keypair $(sk, vk) \in SK \times VK$ and message $\mu \in M$, and
-   output a signature $\xi \in S$.
-3. $\texttt{Verify}(vk, \mu, \xi) \to b \in {0, 1}$. Input a public verification key $vk \in VK$, a message $\mu \in M$,
-   and a signature $\xi \in S$, and output a bit indicating the validity of $\xi$ as a signature on $m$ from $vk$.
+2. $\texttt{Sign}((sk, vk), \mu) \to \xi \in \Xi$. Input keypair $(sk, vk) \in K_S \times K_V$ and message $\mu \in M$,
+   and output a signature $\xi \in \Xi$.
+3. $\texttt{Verify}(vk, \mu, \xi) \to b \in {0, 1}$. Input a public verification key $vk \in K_V$, a message $\mu \in
+   M$, and a signature $\xi \in \Xi$, and output a bit indicating the validity of $\xi$ as a signature on $m$ from $vk$.
 
-Keeping all the above in mind, the hope behind aggregatable signatures is to take a typical signature scheme as a
-sub-scheme and add support for an $\texttt{Aggregate}$ function and an $\texttt{AggregateVerify}$ function that work
-roughly as follows.
+As in the last article, we assume that the message set $M$ is the set of all $k$-length bit strings, $M = {0,1}^k$ where
+$k$ is an (integral valued) function of $\lambda$. Keeping all the above in mind, the hope behind aggregatable
+signatures is to take a typical signature scheme as a sub-scheme and add support for an $\texttt{Aggregate}$ function
+and an $\texttt{AggregateVerify}$ function that work roughly as follows.
 
-4. $\texttt{Aggregate}$ inputs a list of message-key-signature triples $(m_0, vk_0, \xi_0), ..., (m_{N-1}, vk_{N-1},
-   \xi_{N-1})$ and outputs an aggregate signature $\xi_{ag}$. Symbolically, $\texttt{Aggregate}((m_0, vk_0, \xi_0),
-   ..., (m_{N-1}, vk_{N-1}, \xi_{N-1})) \to \xi_{ag}.
-5. $\texttt{AggregateVerify}$ inputs a list of messages-key pairs $(m_0, vk_0), ..., (m_{N-1}, vk_{N-1})$ and an
-   aggregate signature $\xi_{ag}$ and outputs a bit $b$ indicating whether $\xi_{ag}$ is a valid aggregate signature on
-   these message-key pairs.
+4. $\texttt{Setup}^\prime$ augments the output of $\texttt{Setup}$ with an _aggregation capacity_ $C$ and an _aggregate
+   signature set_ $\Xi_{ag}$.
+5. $\texttt{Aggregate}((m_i, vk_i, \xi_i)_{i=0}^{N-1}) \to \texttt{out} \in \Xi_{ag} \cup \left\{\bot\right|}$. Input a
+   list of message-key-signature triples $(m_0, vk_0, \xi_0), ..., (m_{N-1}, vk_{N-1}, \xi_{N-1}) \in M \times K_V
+   \times \Xi$ and output an aggregate signature $\xi_{ag} \in \Xi_{ag}$ or a distinguished failure symbol, $\bot$.
+6. $\texttt{AggregateVerify}((m_i, vk_i)_i, \xi_{ag}) \to b \in {0,1}$. Input a list of messages-key pairs $(m_0, vk_0)
+   , ..., (m_{N-1}, vk_{N-1}) \in M \times K_V$ and an aggregate signature $\xi_{ag} \in \Xi_{ag}$ and output a bit $b$
+   indicating whether $\xi_{ag}$ is a valid aggregate signature on these message-key pairs.
 
-If aggregation of signatures requires the participation (and secret signing keys) of all the signers in one or more
-round of interaction, the scheme is called *interactive*, otherwise it is called *non-interactive*.
+If signature aggregation requires the participation (and secret signing keys) of all the signers in one or more round of
+interaction, the scheme is called *interactive*, otherwise it is called *non-interactive*.
 
-In notation, an aggregatable signature scheme will often not include the $\texttt{Verify}$ algorithm. After all, a
-signature can be aggregated alone by computing $\xi_{ag} = Aggregate(\underline{m}, \underline{vk}, \underline{\xi})$,
-and if it is valid, it ought to pass aggregate verification, i.e. $\texttt{AggregateVerify}(\underline{m},
-\underline{vk}, \xi_{ag}) = 1$. $\texttt{Verify}$ is redundant.
+Just like in the previous article, this definition is quite useless without additional properties. To see why, we can
+follow the same line of reasoning as our last article. Indeed, if $\Xi_{ag} = \left\{0, 1\right\}$, the scheme is too
+simple to be of use. Or, if $\texttt{AggregateVerify}$ always returns a fixed bit, clearly the scheme is useless. And,
+just as in the previous article, this leads us to the security properties of aggregate signature schemes.
 
-However, in practice, there may be situations where aggregating a signature alone is wasteful of computational time or
-space, and thus verification of individual signatures may have use cases. For this reason, we include individual
-signature verification in the rest of this discussion.
+Before describing security properties, we take a brief aside to discuss the redundancy built into this definition. We
+denote an aggregate signature scheme with the tuple of algorithms $(\texttt{Setup}^\prime, \texttt{Keygen},
+\texttt{Sign}, \texttt{Verify}, \texttt{Aggregate}, \texttt{AggregateVerify})$, but oftentimes we disregard
+$\texttt{Verify}$. After all, a signature $\xi \in \Xi$ on some $\mu \in M$ under $vk \in K_V$ and can be aggregated
+alone by computing $\xi_{ag} = Aggregate((m, vk, \xi))$, so that $\texttt{Verify}$ is subsumed by
+$\texttt{AggregateVerify}$. However, in practice, there may be situations where aggregating a signature alone is
+wasteful of computational time or space, and thus verification of individual signatures may have use cases, which is why
+we include it in our definition. However, we avoid basing our security properties below on the $\texttt{Verify}$
+algorithm to avoid redundancy and unnecessary security proofs.
 
-A keen-eyed reader may have noticed that we can non-interactively aggregate signatures by merely concatenating them
-together. In other words, if $\xi_i$ is a purported signature on some message-key pair $(\mu_i, vk_i)$ for each $0 \leq
-i < N$, then we could define the following easily:
+#### Correctness
+
+Correctness means that honestly computed signatures have to pass aggregate verification. That is to say, if $1 \leq N
+\leq C$ and, for each $i = 0, 1, \ldots, N-1$, each $(sk_i, vk_i) \leftarrow \texttt{Keygen}$, each $\mu_i \in M$, and
+each $\xi_i \leftarrow \texttt{Sign}((sk_i, vk_i), \mu_i)$, and $\xi_{ag} \leftarrow \texttt{Aggregate}((\mu_i, vk_i,
+\xi_i)_{i=0}^{N-1})$, then $\texttt{AggregateVerify}((\mu_i, vk_i)_{i=0}^{N-1}, \xi_{ag}) = 1$.
+
+#### Aggregate Existential Unforgeability
+
+The definition of existential unforgeability introduced in the previous article does not carry over to aggregate
+signatures exactly, although with a few modifications, we obtain the following unforgeability game.
+
+1. First, Alice and Bob agree upon input and output of $\texttt{Setup}^\prime$, to recreate the common situation that
+   Alice and Bob have agreed upon some publicly audited and cryptanalyzed signature scheme (cf. the NIST post-quantum
+   signature vetting process).
+2. Next, Bob runs $\texttt{Keygen}$ to get some _challenge keys_ $(sk, vk)$. Bob sends $vk$ to Alice.
+3. Bob grants Alice access to a signature oracle; upon querying this oracle with any $\mu \in M$, Alice receives in
+   return an (unaggregated) $\xi \in \Xi$ such that $\texttt{Verify}(vk, \mu, \xi) = 1$. Alice can make queries
+   adaptively in any order she likes, and decide on these queries after seeing other oracle query responses.
+4. Lastly, Alice outputs either a distinguished failure symbol $\bot$ or a purported forgery 
+   $\texttt{forgery} = ((\mu_i, vk_i)_{i=0}^{N-1}, \xi_{ag}) \in (M \times K_V)^N \times \Xi_{ag}$ for some 
+   $1 \leq N \leq C$. Alice's forgery is successful if $\texttt{AggregateVerify}(\texttt{forgery}) = 1$ and there exists 
+   an index $i \in {0, 1, \ldots, N-1}$ such that 
+    1. $vk_i = vk$, the challenge key, and
+    2. the signing oracle was not queried with $\mu_i$.
+
+This game is summarized in the following diagram.
+
+![A graphical depiction of the aggregate existential unforgeability game.](agunf.png)
+
+#### Compact Aggregation: To glue or not to glue?
+
+A keen-eyed reader may have noticed that we can non-interactively aggregate signatures by merely concatenating or gluing
+them together. In other words, if $\xi_i$ is a purported signature on some message $\mu_i$ under a verification key
+$vk_i$ for each $i = 0, 1, \ldots, N-1$, then we could define the following.
 
 4. $\texttt{Aggregate}$ inputs $(m_0, vk_0, \xi_0), ..., (m_{N-1}, vk_{N-1}, \xi_{N-1})$ and outputs the $N$-tuple $\xi_
    {ag} = (\xi_0, ..., \xi_{N-1})$.
 5. $\texttt{AggregateVerify}$ inputs a list of messages-key pairs $(m_0, vk_0), ..., (m_{N-1}, vk_{N-1})$ and an
-   aggregate signature $\xi_{ag}$. Parse $\xi_{ag} = (\xi_0, ..., \xi_{N-1})$, compute each $b_i = Verify(\mu_i, vk_i,
-   \xi_i)$, and return $b_{0} AND ... AND b_{N-1}$.
+   aggregate signature $\xi_{ag}$. Parse $\xi_{ag} = (\xi_0, ..., \xi_{N-1})$, compute each $b_i = \texttt{Verify}(
+   \mu_i, vk_i, \xi_i)$, and return $b_{0} \cdot b_{1} \cdot \ldots \cdot b_{N-1}$.
 
 We note that the size of the aggregate signature is exactly $N$ times the size of an individual signature $\xi_i$. That
-is to say: $|\xi_{ag}| = O(N)$. This is called _linear_ or _trivial_ aggregation, because we can always perform it with
-any signature scheme.
+is to say: $|\xi_{ag}| = O(N)$. This mode of aggregation _linear_ or _trivial_ aggregation, because we can always
+perform it with any signature scheme.
 
 This leads us to the notion of _compact_ aggregatable signatures. These are exactly the aggregate signature schemes such
 that the size of an aggregate signature is sublinear in $N$. In other words, these are the aggregatable signature
 schemes for which it is (asymptotically) more efficient to publish aggregated signatures than to publish individual
 signatures.
 
-### When is it worth it to aggregate?
+### Aggregation is not always worth it, though...
 
 Even if a scheme is a compact aggregatable signature scheme (say with $|\xi_{ag}| = O(lg(N))$), then the actual
 constants wrapped up in the big O notation here critically determine whether the scheme is actually practical.
@@ -134,9 +176,9 @@ algorithm that has no information about $sk$ can output any vector $z$ such that
 Again setting some details aside, we can loosely think of the Boneh-Kim aggregatable extension of these signatures as
 follows. To aggregate signatures, some small-norm aggregation coefficients are computed, $\underline{t} = (t_{0}, ...,
 t_{N-1}) = hash(salt, (m_0, vk_0), ..., (m_{N-1}, vk_{N-1}))$. From these, $\texttt{Aggregate}$ merely outputs the
-linear combination of signatures, $\xi_{ag} = t_{0} \cdot \xi_0 + ... + t_{N-1} \cdot \xi_{N-1}$. Since each
-signature is small-norm and each aggregation coefficient is small-norm, the aggregate signature $\xi_{ag}$ is
-small-norm. So we can check the norm, and we can check that $\langle \underline{a}, \xi_{ag} \rangle\xi_{ag} = t_
+linear combination of signatures, $\xi_{ag} = t_{0} \cdot \xi_0 + ... + t_{N-1} \cdot \xi_{N-1}$. Since each signature
+is small-norm and each aggregation coefficient is small-norm, the aggregate signature $\xi_{ag}$ is small-norm. So we
+can check the norm, and we can check that $\langle \underline{a}, \xi_{ag} \rangle\xi_{ag} = t_
 {0} \cdot (v_{0} \cdot c_{0} + u_{0}) + ... + t_{N-1} \cdot (v_{N-1} \cdot c_{N-1} + u_{N-1})$ for
 $\texttt{AggregateVerify}$.
 
