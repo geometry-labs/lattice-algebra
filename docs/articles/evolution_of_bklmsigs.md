@@ -40,20 +40,20 @@ which informally work as follows.
    signing key and $vk$ is a public verification key.
 2. $\texttt{Sign}((sk, vk), \mu) \to \xi \in \Xi$. Input keypair $(sk, vk) \in K_S \times K_V$ and message $\mu \in M$,
    and output a signature $\xi \in \Xi$.
-3. $\texttt{Verify}(vk, \mu, \xi) \to b \in {0, 1}$. Input a public verification key $vk \in K_V$, a message $\mu \in
+3. $\texttt{Verify}(vk, \mu, \xi) \to b \in \left\{0, 1\right\}$. Input a public verification key $vk \in K_V$, a message $\mu \in
    M$, and a signature $\xi \in \Xi$, and output a bit indicating the validity of $\xi$ as a signature on $m$ from $vk$.
 
-As in the last article, we assume that the message set $M$ is the set of all $k$-length bit strings, $M = {0,1}^k$ where
+As in the last article, we assume that the message set $M$ is the set of all $k$-length bit strings, $M = \left\{0,1\right\}^k$ where
 $k$ is an (integral valued) function of $\lambda$. Keeping all the above in mind, the hope behind aggregatable
 signatures is to take a typical signature scheme as a sub-scheme and add support for an $\texttt{Aggregate}$ function
 and an $\texttt{AggregateVerify}$ function that work roughly as follows.
 
 4. $\texttt{Setup}^\prime$ augments the output of $\texttt{Setup}$ with an _aggregation capacity_ $C$ and an _aggregate
    signature set_ $\Xi_{ag}$.
-5. $\texttt{Aggregate}((m_i, vk_i, \xi_i)_{i=0}^{N-1}) \to \texttt{out} \in \Xi_{ag} \cup \left\{\bot\right|}$. Input a
+5. $\texttt{Aggregate}((m_i, vk_i, \xi_i)_{i=0}^{N-1}) \to \texttt{out} \in \Xi_{ag} \cup \left\{\bot\right|\right\}$. Input a
    list of message-key-signature triples $(m_0, vk_0, \xi_0), ..., (m_{N-1}, vk_{N-1}, \xi_{N-1}) \in M \times K_V
-   \times \Xi$ and output an aggregate signature $\xi_{ag} \in \Xi_{ag}$ or a distinguished failure symbol, $\bot$.
-6. $\texttt{AggregateVerify}((m_i, vk_i)_i, \xi_{ag}) \to b \in {0,1}$. Input a list of messages-key pairs $(m_0, vk_0)
+   \times \Xi$ and output an aggregate signature $\texttt{out} = \xi_{ag} \in \Xi_{ag}$ or a distinguished failure symbol, $\texttt{out} = \bot$.
+6. $\texttt{AggregateVerify}((m_i, vk_i)_i, \xi_{ag}) \to b \in \left\{0,1\right\}$. Input a list of messages-key pairs $(m_0, vk_0)
    , ..., (m_{N-1}, vk_{N-1}) \in M \times K_V$ and an aggregate signature $\xi_{ag} \in \Xi_{ag}$ and output a bit $b$
    indicating whether $\xi_{ag}$ is a valid aggregate signature on these message-key pairs.
 
@@ -97,7 +97,7 @@ signatures exactly, although with a few modifications, we obtain the following u
 4. Lastly, Alice outputs either a distinguished failure symbol $\bot$ or a purported forgery 
    $\texttt{forgery} = ((\mu_i, vk_i)_{i=0}^{N-1}, \xi_{ag}) \in (M \times K_V)^N \times \Xi_{ag}$ for some 
    $1 \leq N \leq C$. Alice's forgery is successful if $\texttt{AggregateVerify}(\texttt{forgery}) = 1$ and there exists 
-   an index $i \in {0, 1, \ldots, N-1}$ such that 
+   an index $i \in \left\{0, 1, \ldots, N-1\right\}$ such that 
     1. $vk_i = vk$, the challenge key, and
     2. the signing oracle was not queried with $\mu_i$.
 

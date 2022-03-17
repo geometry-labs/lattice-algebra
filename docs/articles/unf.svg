@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="210mm"
+   height="297mm"
+   viewBox="0 0 210 297"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.1.2 (0a00cf5, 2022-02-04)"
+   sodipodi:docname="unf.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="0.69041105"
+     inkscape:cx="663.37292"
+     inkscape:cy="268.68052"
+     inkscape:window-width="1920"
+     inkscape:window-height="1052"
+     inkscape:window-x="1920"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:6.69804px;line-height:1.25;font-family:sans-serif;fill:#0000a2;fill-opacity:1;stroke:none;stroke-width:0.167451"
+       x="171.76949"
+       y="179.38423"
+       id="text33773-6-1-4"><tspan
+         sodipodi:role="line"
+         style="fill:#0000a2;fill-opacity:1;stroke-width:0.167451"
+         x="171.76949"
+         y="179.38423"
+         id="tspan330728-6" /></text>
+    <g
+       id="g482908"
+       inkscape:export-filename="/home/brandon/Desktop/unf.png"
+       inkscape:export-xdpi="96"
+       inkscape:export-ydpi="96">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#af0000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+         x="91.886986"
+         y="43.989574"
+         id="text3399"><tspan
+           sodipodi:role="line"
+           id="tspan3397"
+           style="fill:#af0000;fill-opacity:1;stroke-width:0.264583"
+           x="91.886986"
+           y="43.989574">Alice</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#0000a2;fill-opacity:1;stroke:none;stroke-width:0.264583"
+         x="192.39984"
+         y="43.989586"
+         id="text5449"><tspan
+           sodipodi:role="line"
+           id="tspan5447"
+           style="fill:#0000a2;fill-opacity:1;stroke-width:0.264583"
+           x="192.39984"
+           y="43.989586">Bob</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+         x="120.21249"
+         y="14.755607"
+         id="text33773"><tspan
+           sodipodi:role="line"
+           id="tspan33771"
+           style="stroke-width:0.264583"
+           x="120.21249"
+           y="14.755607">ρ ← Setup(λ)</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:6.69804px;line-height:1.25;font-family:sans-serif;fill:#0000a2;fill-opacity:1;stroke:none;stroke-width:0.167451"
+         x="171.76979"
+         y="71.217545"
+         id="text33773-6"><tspan
+           sodipodi:role="line"
+           id="tspan33771-1"
+           style="fill:#0000a2;fill-opacity:1;stroke-width:0.167451"
+           x="171.76979"
+           y="71.217545">(sk, vk) ← Keygen</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:6.69804px;line-height:1.25;font-family:sans-serif;fill:#0000a2;fill-opacity:1;stroke:none;stroke-width:0.167451"
+         x="171.76947"
+         y="128.66722"
+         id="text33773-6-1"><tspan
+           sodipodi:role="line"
+           id="tspan33771-1-5"
+           style="fill:#0000a2;fill-opacity:1;stroke-width:0.167451"
+           x="171.76947"
+           y="128.66722">ξ<tspan
+   style="font-size:65%;baseline-shift:sub"
+   id="tspan298782">i</tspan> ← Bob such that</tspan><tspan
+           sodipodi:role="line"
+           style="fill:#0000a2;fill-opacity:1;stroke-width:0.167451"
+           x="171.76947"
+           y="137.03976"
+           id="tspan330728">Verify(vk, μ<tspan
+   style="font-size:65%;baseline-shift:sub"
+   id="tspan344550">i</tspan>, ξ<tspan
+   style="font-size:65%;baseline-shift:sub"
+   id="tspan344548">i</tspan>) = 1  </tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:6.69804px;line-height:1.25;font-family:sans-serif;fill:#af0000;fill-opacity:1;stroke:none;stroke-width:0.167;stroke-miterlimit:4;stroke-dasharray:none"
+         x="82.232979"
+         y="115.7277"
+         id="text33773-6-0"><tspan
+           sodipodi:role="line"
+           id="tspan33771-1-43"
+           style="fill:#af0000;fill-opacity:1;stroke-width:0.167;stroke-miterlimit:4;stroke-dasharray:none"
+           x="82.232979"
+           y="115.7277">μ<tspan
+   style="font-size:65%;baseline-shift:sub;fill:#af0000;fill-opacity:1;stroke-width:0.167;stroke-miterlimit:4;stroke-dasharray:none"
+   id="tspan232442">i</tspan> ← Alice</tspan></text>
+      <g
+         id="g196157"
+         transform="translate(-1.5875,3.7041668)">
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-weight:normal;font-size:41.9942px;line-height:1.25;font-family:sans-serif;opacity:0.5;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1.04986"
+           x="134.8542"
+           y="84.877632"
+           id="text190801"><tspan
+             sodipodi:role="line"
+             id="tspan190799"
+             style="stroke-width:1.04986"
+             x="134.8542"
+             y="84.877632">←</tspan></text>
+        <rect
+           style="fill:#fefefe;fill-opacity:1;stroke:#0000a2;stroke-width:0.688357;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+           id="rect145697"
+           width="12.469296"
+           height="10.753073"
+           x="146.46178"
+           y="66.531967"
+           rx="5.7831025"
+           ry="6.4166465" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-weight:normal;font-size:6.69804px;line-height:1.25;font-family:sans-serif;fill:#0000a2;fill-opacity:1;stroke:none;stroke-width:0.167451"
+           x="149.00128"
+           y="73.992188"
+           id="text33773-6-9"><tspan
+             sodipodi:role="line"
+             id="tspan33771-1-4"
+             style="fill:#0000a2;fill-opacity:1;stroke-width:0.167451"
+             x="149.00128"
+             y="73.992188">vk </tspan></text>
+      </g>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:41.9942px;line-height:1.25;font-family:sans-serif;opacity:0.5;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1.04986"
+         x="133.26701"
+         y="148.11302"
+         id="text190801-2"><tspan
+           sodipodi:role="line"
+           id="tspan190799-4"
+           style="stroke-width:1.04986"
+           x="133.26701"
+           y="148.11302">←</tspan></text>
+      <rect
+         style="fill:#fefefe;fill-opacity:1;stroke:#0000a2;stroke-width:0.688357;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         id="rect145697-3"
+         width="12.469296"
+         height="10.753073"
+         x="144.87459"
+         y="129.76735"
+         rx="5.7831025"
+         ry="6.4166465" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:6.69804px;line-height:1.25;font-family:sans-serif;fill:#0000a2;fill-opacity:1;stroke:none;stroke-width:0.167451"
+         x="148.47241"
+         y="137.22757"
+         id="text33773-6-9-4"><tspan
+           sodipodi:role="line"
+           id="tspan33771-1-4-8"
+           style="fill:#0000a2;fill-opacity:1;stroke-width:0.167451"
+           x="148.47241"
+           y="137.22757">ξ<tspan
+   style="font-size:65%;baseline-shift:sub"
+   id="tspan287889">i</tspan></tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:41.9942px;line-height:1.25;font-family:sans-serif;opacity:0.5;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1.04986"
+         x="-168.10497"
+         y="133.09196"
+         id="text190801-0"
+         transform="scale(-1,1)"><tspan
+           sodipodi:role="line"
+           id="tspan190799-9"
+           style="stroke-width:1.04986"
+           x="-168.10497"
+           y="133.09196">←</tspan></text>
+      <rect
+         style="fill:#ffffff;fill-opacity:1;stroke:#af0000;stroke-width:0.688357;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         id="rect145697-5"
+         width="12.469296"
+         height="10.753073"
+         x="144.87457"
+         y="114.74629"
+         rx="5.7831025"
+         ry="6.4166465" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:6.69804px;line-height:1.25;font-family:sans-serif;fill:#af0000;fill-opacity:1;stroke:none;stroke-width:0.167451"
+         x="148.4724"
+         y="121.67735"
+         id="text33773-6-9-0"><tspan
+           sodipodi:role="line"
+           id="tspan33771-1-4-6"
+           style="fill:#af0000;fill-opacity:1;stroke-width:0.167451"
+           x="148.4724"
+           y="121.67735">μ<tspan
+   style="font-size:65%;baseline-shift:sub"
+   id="tspan271130">i</tspan> </tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:5.76056px;line-height:1.25;font-family:sans-serif;fill:#5e00ad;fill-opacity:1;stroke:none;stroke-width:0.144014"
+         x="5.032423"
+         y="23.389782"
+         id="text43639"><tspan
+           sodipodi:role="line"
+           id="tspan43637"
+           style="fill:#5e00ad;fill-opacity:1;stroke-width:0.144014"
+           x="5.032423"
+           y="23.389782">0. Initial agreement</tspan><tspan
+           sodipodi:role="line"
+           style="fill:#5e00ad;fill-opacity:1;stroke-width:0.144014"
+           x="5.032423"
+           y="30.590483"
+           id="tspan48441">    on parameters.</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:5.76056px;line-height:1.25;font-family:sans-serif;fill:#5e00ad;fill-opacity:1;stroke:none;stroke-width:0.144014"
+         x="5.032423"
+         y="69.960709"
+         id="text43639-6"><tspan
+           sodipodi:role="line"
+           style="fill:#5e00ad;fill-opacity:1;stroke-width:0.144014"
+           x="5.032423"
+           y="69.960709"
+           id="tspan80945">1. Bob makes and posts </tspan><tspan
+           sodipodi:role="line"
+           style="fill:#5e00ad;fill-opacity:1;stroke-width:0.144014"
+           x="5.032423"
+           y="77.161407"
+           id="tspan87197">    the public challenge </tspan><tspan
+           sodipodi:role="line"
+           style="fill:#5e00ad;fill-opacity:1;stroke-width:0.144014"
+           x="5.032423"
+           y="84.362106"
+           id="tspan87205">    verification key.</tspan></text>
+      <rect
+         style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:2.42312;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         id="rect71092"
+         width="241.3853"
+         height="46.386234"
+         x="1.21156"
+         y="1.21156"
+         rx="8.7031765"
+         ry="4.8489652" />
+      <rect
+         style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:2.42312;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         id="rect71092-2"
+         width="241.3853"
+         height="46.386234"
+         x="1.2119827"
+         y="51.928135"
+         rx="8.7031765"
+         ry="4.8489652" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:5.76056px;line-height:1.25;font-family:sans-serif;fill:#5e00ad;fill-opacity:1;stroke:none;stroke-width:0.144014"
+         x="5.0319948"
+         y="124.22343"
+         id="text43639-6-4"><tspan
+           sodipodi:role="line"
+           style="fill:#5e00ad;fill-opacity:1;stroke-width:0.144014"
+           x="5.0319948"
+           y="124.22343"
+           id="tspan87205-9">2. Bob grants Alice</tspan><tspan
+           sodipodi:role="line"
+           style="fill:#5e00ad;fill-opacity:1;stroke-width:0.144014"
+           x="5.0319948"
+           y="131.42413"
+           id="tspan199151">    access to the oracle.</tspan></text>
+      <rect
+         style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:2.42312;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         id="rect71092-2-6"
+         width="241.38531"
+         height="46.385883"
+         x="1.2115554"
+         y="102.64555"
+         rx="8.7031765"
+         ry="4.8489285" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:6.69804px;line-height:1.25;font-family:sans-serif;fill:#af0000;fill-opacity:1;stroke:none;stroke-width:0.167;stroke-miterlimit:4;stroke-dasharray:none"
+         x="83.291321"
+         y="175.96957"
+         id="text33773-6-0-4"><tspan
+           sodipodi:role="line"
+           id="tspan33771-1-43-1"
+           style="fill:#af0000;fill-opacity:1;stroke-width:0.167;stroke-miterlimit:4;stroke-dasharray:none"
+           x="83.291321"
+           y="175.96957">(μ, ξ) ← Alice</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:5.76056px;line-height:1.25;font-family:sans-serif;fill:#5e00ad;fill-opacity:1;stroke:none;stroke-width:0.144014"
+         x="5.0320101"
+         y="165.94472"
+         id="text43639-6-4-5"><tspan
+           sodipodi:role="line"
+           style="fill:#5e00ad;fill-opacity:1;stroke-width:0.144014"
+           x="5.0320101"
+           y="165.94472"
+           id="tspan199151-1">3. Alice attempts her</tspan><tspan
+           sodipodi:role="line"
+           style="fill:#5e00ad;fill-opacity:1;stroke-width:0.144014"
+           x="5.0320101"
+           y="173.14542"
+           id="tspan349290">    forgery, winning if</tspan><tspan
+           sodipodi:role="line"
+           style="fill:#5e00ad;fill-opacity:1;stroke-width:0.144014"
+           x="5.0320101"
+           y="180.34612"
+           id="tspan440953">    Verify(vk, μ, ξ) = 1 and</tspan><tspan
+           sodipodi:role="line"
+           style="fill:#5e00ad;fill-opacity:1;stroke-width:0.144014"
+           x="5.0320101"
+           y="187.54681"
+           id="tspan441219">    μ<tspan
+   style="font-size:65%;baseline-shift:sub"
+   id="tspan449615">i</tspan> ≠ μ for any i.</tspan></text>
+      <rect
+         style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:2.42312;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         id="rect71092-2-6-2"
+         width="241.38531"
+         height="46.385883"
+         x="1.21156"
+         y="153.36256"
+         rx="8.7031765"
+         ry="4.8489285" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:21.1071px;line-height:1.25;font-family:sans-serif;opacity:0.5;fill:#000000;fill-opacity:1;stroke:none;stroke-width:4.6;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         x="88.31179"
+         y="91.8461"
+         id="text158719"
+         transform="rotate(-30)"><tspan
+           sodipodi:role="line"
+           id="tspan158717"
+           style="stroke:none;stroke-width:4.6;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+           x="88.31179"
+           y="91.8461">←</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:21.1071px;line-height:1.25;font-family:sans-serif;opacity:0.5;fill:#000000;fill-opacity:1;stroke:none;stroke-width:4.6;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         x="-174.11237"
+         y="-59.664215"
+         id="text158719-7"
+         transform="matrix(-0.8660254,-0.5,-0.5,0.8660254,0,0)"><tspan
+           sodipodi:role="line"
+           id="tspan158717-5"
+           style="stroke:none;stroke-width:4.6;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+           x="-174.11237"
+           y="-59.664215">←</tspan></text>
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="217.08183"
+       y="135.52397"
+       id="text333650"><tspan
+         sodipodi:role="line"
+         id="tspan333648"
+         style="stroke-width:0.264583"></tspan></text>
+  </g>
+</svg>

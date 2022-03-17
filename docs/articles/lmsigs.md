@@ -43,7 +43,7 @@ that informally work as follows.
    K_S \times K_V$, where $sk$ is a secret signing key and $vk$ is the corresponding public verification key.
 2. $\texttt{Sign}(\lambda, \rho, (sk, vk), \mu) \to \xi$. Input $(\lambda, \rho, (sk, vk), \mu)$ where $\mu \in M$ is a
    message, and outputs a signature, $\xi \in S$.
-3. $\texttt{Verify}(\lambda, \rho, vk, \mu, \xi) \to b \in {0, 1}$. Output a bit $b$ indicating whether the signature is
+3. $\texttt{Verify}(\lambda, \rho, vk, \mu, \xi) \to b \in \left\{0, 1\right\}$. Output a bit $b$ indicating whether the signature is
    a valid signature on the message $m$ with the public verification key $vk$.
 
 This can be visualized as in the following diagram.
@@ -54,11 +54,11 @@ MITCHELL: Creative Commons see https://commons.wikimedia.org/wiki/File:Private_k
 Since $\texttt{Setup}$ is run by all parties before participating and the inputs and outputs of $\texttt{Setup}$ are
 both public, and since all algorithms take $\lambda, \rho$ as input, it is admissible to neglect including $\lambda$ and
 $\rho$ in the rest of our notation, and to ignore $\texttt{Setup}$ (unless the details become relevant). Also, we assume
-that the message set $M$ is the set of all $k$-length bit strings, $M = {0,1}^k$ where $k$ is an (integral valued)
+that the message set $M$ is the set of all $k$-length bit strings, $M = \left\{0,1\right\}^k$ where $k$ is an (integral valued)
 function of $\lambda$.
 
 Such a scheme, as described, is rather useless, without further conditions. To see why, consider the silly case that
-$\Xi = {0, 1}$. One can easily imagine an episode of Futurama taking place on the robot homeworld where all the robots
+$\Xi = \left\{0, 1\right\}$. One can easily imagine an episode of Futurama taking place on the robot homeworld where all the robots
 authenticate themselves with single-bit signatures. Even Fry could forge a signature.
 
 ![If you want to be extra safe, check that there's a big block of jumbled characters at the bottom.](problyfine.png)
@@ -158,7 +158,7 @@ clever" signature schemes.
 
 In this section, we describe a Schnorr-like signature scheme in the elliptic curve setting. Let $\mathbb{G}$ be an
 elliptic curve group, written additively, with prime order $p$, and let $G$ be generator sampled uniformly at random.
-Let $F:{0,1}^* \to \mathbb{Z}/p\mathbb{Z}$ be a random oracle. The following defines a one-time signature scheme that
+Let $F:\left\{0,1\right\}^* \to \mathbb{Z}/p\mathbb{Z}$ be a random oracle. The following defines a one-time signature scheme that
 satisfies one-time existential unforgeability.
 
 0. $\texttt{Setup}(\lambda) -> \rho$. Set $\rho = (\mathbb{G}, p, G, F)$.
@@ -187,7 +187,7 @@ We can swap out the fundamental hardness assumption above with a different hardn
 scheme; using a related approach, Lyubashevsky and Micciancio first proposed signatures designed (mostly) this way
 in [[1]](https://eprint.iacr.org/2013/746.pdf). In a lattice setting, we ditch the elliptic curve group in favor of
 lattices induced by rings of integers and their ideals. Let $\mathbb{Z}/q\mathbb{Z}$ be the integers modulo $q$ for a
-prime modulus $q$, let $d$ be a power of two integer, let $l$ be a natural number, let $R = \mathbb{Z}[X]/(X^d + 1)$ be
+prime modulus $q$, let $d$ be a power of two integer, let $l$ be a natural number, let $R = \mathbb{Z}\left[X\right]/(X^d + 1)$ be
 a quotient ring of integer-coefficient polynomials, let $R_q$ be the quotient ring $R/qR$, let $V = R^\ell$ be the
 freely-generated $R$-module with length $l$, and let $V_q = R_q^\ell$ be the freely-generated $R_q$-module with length
 $\ell$. Note that $V$ and $V_q$ are also vector spaces over $\mathbb{Z}/q\mathbb{Z}$ of dimension $d\cdot \ell$.
@@ -203,19 +203,19 @@ statement to conclude anything about $c \cdot u$ when $c \in $R$ or $R_q$... exc
 \mathbb{Z}/q\mathbb{Z}$.
 
 In fact, absolute homogeneity is relaxed, and we end up with a norm-like function with _absolute subhomogeneity_: $\| c
-\dot u\| \leq d \cdot |c| \|u\|$.
+\cdot u\| \leq d \cdot |c| \|u\|$.
 
 For lack of a better term, we shall call such functions _subhomogeneous norms_, and if $T$ is a space that admits a
 sub-homogeneous norm, we shall call $T$ a _subhomogeneously normed space_.
 
 Let $\beta_{sk}$, $\beta_{ch}$, $\beta_v \in \mathbb{N}$. For any subset $T$ of any subhomogeneously normed space, let
-$B(T, \beta) = {t \in T \mid \|t\| \leq \beta}$. Again let $F$ be a random oracle but this time, let $F:{0,1}^* \to B(
+$B(T, \beta) = {t \in T \mid \|t\|_{\infty} \leq \beta}$. Again let $F$ be a random oracle but this time, let $F:\left\{0,1\right\}^* \to B(
 R_q, \beta_{ch})$.
 
 0. $\texttt{Setup}(\lambda) -> \rho$. Compute $d, q, l, k, \beta_{sk}, \beta_{ch}, \beta_v$ from $\lambda$, sample
    $\underline{a}$ from $V_q$ uniformly at random, and output $\rho = (d, q, l, F, k, \beta_{sk}, \beta_{ch}, \beta_v,
    \underline{a})$. The signing key set is $K_S = B(V_q, \beta_{sk}) \times B(V_q, \beta_{sk})$, the verification key
-   set is $K_V = R_q \times R_q$, the message set is length $k$ bit strings $M = {0, 1}^k$, and the signature set is $S
+   set is $K_V = R_q \times R_q$, the message set is length $k$ bit strings $M = \left\{0, 1\right\}^k$, and the signature set is $S
    = B(V_q, \beta_V)$.
 1. $\texttt{Keygen} -> (sk, vk)$. Sample $\underline{x}, \underline{y}$ uniformly at random and independently from $B(
    V_q, \beta_{sk})$. Define $X = \langle \underline{a}, \underline{x} \rangle$ and $Y = \langle \underline{a},
@@ -398,7 +398,7 @@ non-sender-ambiguous version of CryptoNote that is nevertheless unlinkable and a
 In the following, let $(\mathbb{G}, p, G, F)$ be the group parameters from our Schnorr-like example of one-time
 signatures.
 
-0. In a setup phase, users agree upon $(\mathbb{G}, p, G, F)$, and another hash function $H:{0,1}^* \to
+0. In a setup phase, users agree upon $(\mathbb{G}, p, G, F)$, and another hash function $H:\left\{0,1\right\}^* \to
    \mathbb{Z}/p\mathbb{Z}$.
 1. Users select many-time wallet keys by sampling $a, b \in \mathbb{Z}/p\mathbb{Z}$ independently and uniformly at
    random. Users set $A = aG$, $B = bG$, $sk = (a, b)$, and $vk = (A, B)$. Users then broadcast $vk$.
@@ -435,7 +435,7 @@ A key encapsulation mechanism (KEM) is a tuple of algorithms $(\texttt{Setup}, \
 1. $\texttt{Keygen} \to (sk, pk)$. Output a new secret-public keypair $(sk, pk)$.
 2. $\texttt{Enc}(pk) \to (c, ek)$. Input a public key $pk$ and output a ciphertext $c$ and a bitstring $ek$ we call an _
    ephemeral key._
-3. $\texttt{Dec}(sk, c) \to {ek, \bot}$. Inputs a secret key $sk$ and a ciphertext $c$, and outputs a bitstring $ek$ or
+3. $\texttt{Dec}(sk, c) \to \left\{ek, \bot\right\}$. Inputs a secret key $sk$ and a ciphertext $c$, and outputs a bitstring $ek$ or
    a distinguished failure symbol $\bot.
 
 Setting aside the security properties of a key encapsulation mechanism (that's a different article!), the rough idea
@@ -446,7 +446,7 @@ resulting in another ciphertext $d$. You then send $(c, d)$ to the owner of $pk$
 #### Example: Extending to Lattice-Based One-Time Keys
 
 In the following, let $(d, q, l, k, F, \beta_{sk}, \beta_{ch}, \beta_{v}, \underline{a})$ be output from $Setup$ in the
-Schnorr-like approach to the lattice setting, let $\beta_t$ be some natural number, let $H_0, H_1:{0, 1}^* \to B(V_q,
+Schnorr-like approach to the lattice setting, let $\beta_t$ be some natural number, let $H_0, H_1:\left\{0, 1\right\}^* \to B(V_q,
 \beta_t)$ and let $(KEM.Setup, KEM.Keygen, KEM.Enc, KEM.Dec)$ be a secure KEM.
 
 0. In a setup phase, users agree upon all the above parameters, hash functions, and so on.
