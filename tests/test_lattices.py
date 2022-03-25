@@ -367,7 +367,7 @@ DECODE2COEF_CASES = [
 def test_decode2coef(secpar, dist, lp, dist_pars, val, expected_output):
     k = ceil(log2(dist_pars['bd'])) + 1 + secpar
     assert expected_output == decode2coef(
-        secpar=secpar, lp=lp, distribution=dist, dist_pars=dist_pars, val=val, bits_to_decode=k
+        secpar=secpar, lp=lp, distribution=dist, dist_pars=dist_pars, val=val, btd=k
     )
 
 
@@ -393,7 +393,7 @@ def test_decode2coefs(mocker, secpar, dist, lp, dist_pars, val, responses, expec
     k = ceil(log2(dist_pars['bd'])) + 1 + secpar
     observed_output = decode2coefs(
         secpar=secpar, lp=lp, distribution=dist, dist_pars=dist_pars, val=val,
-        num_coefs=dist_pars['wt'], bits_to_decode=k
+        num_coefs=dist_pars['wt'], btd=k
     )
     assert observed_output == expected_output
 
@@ -421,7 +421,7 @@ DECODE2INDICES_CASES = [
 
 @pytest.mark.parametrize("secpar,dist,lp,dist_pars,val,num_coefs,expected_output", DECODE2INDICES_CASES)
 def test_decode2indices(secpar, dist, lp, dist_pars, val, num_coefs, expected_output):
-    observed_output = decode2indices(secpar=secpar, lp=lp, num_coefs=dist_pars['wt'], val=val, bits_to_indices=bits_to_indices_for_testing)
+    observed_output = decode2indices(secpar=secpar, lp=lp, num_coefs=dist_pars['wt'], val=val, bti=bits_to_indices_for_testing)
     assert observed_output == expected_output
 
 
@@ -437,15 +437,15 @@ DECODE2POLYCOEFS_CASES = [
             distribution=UNIFORM_INFINITY_WEIGHT,
             dist_pars={'wt': small_wt_for_testing, 'bd': small_bd_for_testing},
             num_coefs=small_wt_for_testing,
-            bits_to_indices=bits_to_indices_for_testing,
-            bits_to_decode=bits_to_decode_for_testing)))[2:].zfill(8*get_gen_bytes_per_poly(
+            bti=bits_to_indices_for_testing,
+            btd=bits_to_decode_for_testing)))[2:].zfill(8*get_gen_bytes_per_poly(
             secpar=secpar4testing,
             lp=lp_for_testing,
             distribution=UNIFORM_INFINITY_WEIGHT,
             dist_pars={'wt': small_wt_for_testing, 'bd': small_bd_for_testing},
             num_coefs=small_wt_for_testing,
-            bits_to_indices=bits_to_indices_for_testing,
-            bits_to_decode=bits_to_decode_for_testing)),
+            bti=bits_to_indices_for_testing,
+            btd=bits_to_decode_for_testing)),
         small_wt_for_testing,
         bits_to_indices_for_testing,
         bits_to_decode_for_testing,
@@ -465,11 +465,15 @@ def test_decode2polycoefs(
     mocker.patch("lattice_algebra.main.decode2indices", return_value=expected_indices)
     mocker.patch("lattice_algebra.main.decode2coefs", return_value=expected_coefs)
     assert expected_output == decode2polycoefs(secpar=secpar, lp=lp, distribution=dist, dist_pars=dist_pars, val=val,
-                                               num_coefs=num_coefs, bits_to_ind=bits_to_indices,
-                                               bits_to_coef=bits_to_decode)
+                                               num_coefs=num_coefs, bti=bits_to_indices,
+                                               btd=bits_to_decode)
 
 
-exp_bits_per_poly_for_testing: int = small_dist_pars['wt'] * bits_to_decode(secpar=secpar4testing, bd=small_dist_pars['bd']) + bits_to_indices(secpar=secpar4testing, degree=lp_for_testing.degree, wt=small_dist_pars['wt'])
+exp_bits_per_poly_for_testing: int = small_dist_pars['wt']
+exp_bits_per_poly_for_testing *= bits_to_decode(secpar=secpar4testing, bd=small_dist_pars['bd'])
+exp_bits_per_poly_for_testing += bits_to_indices(
+    secpar=secpar4testing, degree=lp_for_testing.degree, wt=small_dist_pars['wt']
+)
 exp_bytes_per_poly_for_testing = ceil(exp_bits_per_poly_for_testing / 8)
 GET_GEN_BYTES_PER_POLY_CASES = [
     (
@@ -492,7 +496,7 @@ GET_GEN_BYTES_PER_POLY_CASES = [
 def test_get_gen_bits(secpar, lp, dist, dist_pars, num_coefs, bits_to_indices, bits_to_decode, expected_output):
     observed_output = get_gen_bytes_per_poly(
         secpar=secpar, lp=lp, distribution=dist, dist_pars=dist_pars, num_coefs=num_coefs,
-        bits_to_indices=bits_to_indices, bits_to_decode=bits_to_decode
+        bti=bits_to_indices, btd=bits_to_decode
     )
     assert observed_output == expected_output
 
@@ -1124,8 +1128,8 @@ def test_polynomial_norm_and_weight_without_const_time(some_ran_lin_polys_withou
 def test_rand_poly_with_const_time():
     f = random_polynomial(
         secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT,
-        dist_pars=small_dist_pars, num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-        bits_to_decode=bits_to_decode_for_testing
+        dist_pars=small_dist_pars, num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+        btd=bits_to_decode_for_testing
     )
     assert isinstance(f, Polynomial)
     f_coefs, n, w = f.get_coef_rep()
@@ -1138,8 +1142,8 @@ def test_rand_poly_with_const_time():
 def test_rand_poly_without_const_time():
     f = random_polynomial(
         secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT,
-        dist_pars=small_dist_pars, num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-        bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        dist_pars=small_dist_pars, num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+        btd=bits_to_decode_for_testing, const_time_flag=False
     )
     assert isinstance(f, Polynomial)
     f_coefs, n, w = f.get_coef_rep()
@@ -1153,8 +1157,8 @@ def some_random_polys_for_a_vector_with_const_time() -> List[Polynomial]:
     lp: LatticeParameters = lp_for_testing
     return [random_polynomial(
         secpar=secpar4testing, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-        bits_to_decode=bits_to_decode_for_testing
+        num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+        btd=bits_to_decode_for_testing
     ) for _ in range(lp.length)]
 
 
@@ -1163,8 +1167,8 @@ def some_random_polys_for_a_vector_without_const_time() -> List[Polynomial]:
     lp: LatticeParameters = lp_for_testing
     return [random_polynomial(
         secpar=secpar4testing, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-        bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+        btd=bits_to_decode_for_testing, const_time_flag=False
     ) for _ in range(lp.length)]
 
 
@@ -1178,8 +1182,8 @@ def test_polynomial_vector_init_with_const_time(some_random_polys_for_a_vector_w
     assert max(i[2] for i in tmp) <= lp.degree
     assert random_polynomialvector(
         secpar=secpar4testing, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-        bits_to_decode=bits_to_decode_for_testing
+        num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+        btd=bits_to_decode_for_testing
     )
 
 
@@ -1193,8 +1197,8 @@ def test_polynomial_vector_init_without_const_time(some_random_polys_for_a_vecto
     assert max(i[2] for i in tmp) <= lp.degree
     assert random_polynomialvector(
         secpar=secpar4testing, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-        bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+        btd=bits_to_decode_for_testing, const_time_flag=False
     )
 
 
@@ -1249,13 +1253,13 @@ def some_random_polynomialvector_pairs_sums_with_const_time() -> List[
     while len(result) < sample_size_for_random_tests:
         f = random_polynomialvector(
             secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-            bits_to_decode=bits_to_decode_for_testing
+            num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+            btd=bits_to_decode_for_testing
         )
         g = random_polynomialvector(
             secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-            bits_to_decode=bits_to_decode_for_testing
+            num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+            btd=bits_to_decode_for_testing
         )
         h = f + g
         result += [(f, g, h)]
@@ -1269,13 +1273,13 @@ def some_random_polynomialvector_pairs_sums_without_const_time() -> List[
     while len(result) < sample_size_for_random_tests:
         f = random_polynomialvector(
             secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+            num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+            btd=bits_to_decode_for_testing, const_time_flag=False
         )
         g = random_polynomialvector(
             secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+            num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+            btd=bits_to_decode_for_testing, const_time_flag=False
         )
         h = f + g
         result += [(f, g, h)]
@@ -1289,13 +1293,13 @@ def some_random_polynomialvector_pairs_diffs_with_const_time() -> List[
     while len(result) < sample_size_for_random_tests:
         f = random_polynomialvector(
             secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-            bits_to_decode=bits_to_decode_for_testing
+            num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+            btd=bits_to_decode_for_testing
         )
         g = random_polynomialvector(
             secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-            bits_to_decode=bits_to_decode_for_testing
+            num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+            btd=bits_to_decode_for_testing
         )
         h = f - g
         result += [(f, g, h)]
@@ -1309,13 +1313,13 @@ def some_random_polynomialvector_pairs_diffs_without_const_time() -> List[
     while len(result) < sample_size_for_random_tests:
         f = random_polynomialvector(
             secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+            num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+            btd=bits_to_decode_for_testing, const_time_flag=False
         )
         g = random_polynomialvector(
             secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+            num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+            btd=bits_to_decode_for_testing, const_time_flag=False
         )
         h = f - g
         result += [(f, g, h)]
@@ -1642,13 +1646,13 @@ def test_polynomial_vector_pow_with_const_time():
     for k in range(sample_size_for_random_tests):
         v: Polynomial = random_polynomial(
             secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-            bits_to_decode=bits_to_decode_for_testing
+            num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+            btd=bits_to_decode_for_testing
         )
         u: PolynomialVector = random_polynomialvector(
             secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-            bits_to_decode=bits_to_decode_for_testing
+            num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+            btd=bits_to_decode_for_testing
         )
         expected_scaled_vector: PolynomialVector = deepcopy(u)
         expected_scaled_vector.entries = [i * v for i in expected_scaled_vector.entries]
@@ -1661,13 +1665,13 @@ def test_polynomial_vector_pow_without_const_time():
     for k in range(sample_size_for_random_tests):
         v: Polynomial = random_polynomial(
             secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+            num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+            btd=bits_to_decode_for_testing, const_time_flag=False
         )
         u: PolynomialVector = random_polynomialvector(
             secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-            num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-            bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+            num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+            btd=bits_to_decode_for_testing, const_time_flag=False
         )
         expected_scaled_vector: PolynomialVector = deepcopy(u)
         expected_scaled_vector.entries = [i * v for i in expected_scaled_vector.entries]
@@ -1679,8 +1683,8 @@ def test_polynomial_vector_pow_without_const_time():
 def test_polynomialvector_coefficient_representation_and_norm_and_weight_with_const_time():
     f: PolynomialVector = random_polynomialvector(
         secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-        bits_to_decode=bits_to_decode_for_testing
+        num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+        btd=bits_to_decode_for_testing
     )
     assert isinstance(f, PolynomialVector)
     result = f.get_coef_rep()
@@ -1696,8 +1700,8 @@ def test_polynomialvector_coefficient_representation_and_norm_and_weight_with_co
 def test_polynomialvector_coefficient_representation_and_norm_and_weight_without_const_time():
     f: PolynomialVector = random_polynomialvector(
         secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-        bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+        btd=bits_to_decode_for_testing, const_time_flag=False
     )
     assert isinstance(f, PolynomialVector)
     result = f.get_coef_rep()
@@ -1713,8 +1717,8 @@ def test_polynomialvector_coefficient_representation_and_norm_and_weight_without
 def test_random_polynomialvector_with_const_time():
     f: PolynomialVector = random_polynomialvector(
         secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-        bits_to_decode=bits_to_decode_for_testing
+        num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+        btd=bits_to_decode_for_testing
     )
     assert isinstance(f, PolynomialVector)
     results = f.get_coef_rep()
@@ -1730,8 +1734,8 @@ def test_random_polynomialvector_with_const_time():
 def test_random_polynomialvector_without_const_time():
     f: PolynomialVector = random_polynomialvector(
         secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT, dist_pars=small_dist_pars,
-        num_coefs=small_dist_pars['wt'], bits_to_indices=bits_to_indices_for_testing,
-        bits_to_decode=bits_to_decode_for_testing, const_time_flag=False
+        num_coefs=small_dist_pars['wt'], bti=bits_to_indices_for_testing,
+        btd=bits_to_decode_for_testing, const_time_flag=False
     )
     assert isinstance(f, PolynomialVector)
     results = f.get_coef_rep()
@@ -1756,7 +1760,7 @@ def test_decode_bitstring_to_coefficient():
                 bitstring = str(signum_bit) + bin(magnitude_minus_one)[2:].zfill(bits_to_decode - 1)
                 observed_result = decode2coef(
                     secpar=secpar4testing, lp=lp_for_testing, val=bitstring, distribution=UNIFORM_INFINITY_WEIGHT,
-                    dist_pars=dist_pars_tmp, bits_to_decode=bits_to_decode
+                    dist_pars=dist_pars_tmp, btd=bits_to_decode
                 )
                 assert expected_result == observed_result
 
@@ -1783,7 +1787,7 @@ def test_decode_bitstring_to_indices():
     val += bin(4 + 2 ** 5 * 6)[2:].zfill(ceil(log2(lp.degree)) + secpar4testing)
     expected_result = [0, 3, 6]
     observed_result = decode2indices(
-        secpar=secpar4testing, lp=lp, num_coefs=dist_pars['wt'], val=val, bits_to_indices=bits_to_indices_for_this_test
+        secpar=secpar4testing, lp=lp, num_coefs=dist_pars['wt'], val=val, bti=bits_to_indices_for_this_test
     )
     assert expected_result == observed_result
 
@@ -1816,7 +1820,7 @@ def test_decode_bitstring_to_polynomial_coefficients():
         dist_pars: Dict[str, int] = {'bd': bd, 'wt': wt_for_this_test}
         observed_result = decode2polycoefs(secpar=secpar4testing, lp=lp, distribution=UNIFORM_INFINITY_WEIGHT,
                                            dist_pars=dist_pars, val=val, num_coefs=dist_pars['wt'],
-                                           bits_to_ind=bits_to_indices, bits_to_coef=bits_to_decode_for_testing)
+                                           bti=bits_to_indices, btd=bits_to_decode_for_testing)
         assert expected_result == observed_result
 
 
@@ -1850,6 +1854,6 @@ def test_decode_bitstring_to_coefficients():
             observed_result = decode2coefs(
                 secpar=secpar4testing, lp=lp_for_testing, distribution=UNIFORM_INFINITY_WEIGHT,
                 dist_pars={'bd': bound, 'wt': weight}, val=merged_vals, num_coefs=weight,
-                bits_to_decode=bits_to_decode
+                btd=bits_to_decode
             )
             assert expected_result == observed_result
