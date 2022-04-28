@@ -1,0 +1,677 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://geometry-labs.github.io/lattice-algebra/under_the_hood/">
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.3.0, mkdocs-material-8.2.11">
+    
+    
+      
+        <title>Under The Hood - lattice-algebra</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.8c5ef100.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.9647289d.min.css">
+        
+      
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#under-the-hood" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="lattice-algebra" class="md-header__button md-logo" aria-label="lattice-algebra" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            lattice-algebra
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Under The Hood
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      <form class="md-header__option" data-md-component="palette">
+        
+          
+          
+          <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+          
+            <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9v1Z"/></svg>
+            </label>
+          
+        
+          
+          
+          <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_2">
+          
+            <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7M9 21v-1h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1m3-17a5 5 0 0 0-5 5c0 2.05 1.23 3.81 3 4.58V16h4v-2.42c1.77-.77 3-2.53 3-4.58a5 5 0 0 0-5-5Z"/></svg>
+            </label>
+          
+        
+      </form>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/geometry-labs/lattice-algebra" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 512"><!--! Font Awesome Free 6.1.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M186.1 328.7c0 20.9-10.9 55.1-36.7 55.1s-36.7-34.2-36.7-55.1 10.9-55.1 36.7-55.1 36.7 34.2 36.7 55.1zM480 278.2c0 31.9-3.2 65.7-17.5 95-37.9 76.6-142.1 74.8-216.7 74.8-75.8 0-186.2 2.7-225.6-74.8-14.6-29-20.2-63.1-20.2-95 0-41.9 13.9-81.5 41.5-113.6-5.2-15.8-7.7-32.4-7.7-48.8 0-21.5 4.9-32.3 14.6-51.8 45.3 0 74.3 9 108.8 36 29-6.9 58.8-10 88.7-10 27 0 54.2 2.9 80.4 9.2 34-26.7 63-35.2 107.8-35.2 9.8 19.5 14.6 30.3 14.6 51.8 0 16.4-2.6 32.7-7.7 48.2 27.5 32.4 39 72.3 39 114.2zm-64.3 50.5c0-43.9-26.7-82.6-73.5-82.6-18.9 0-37 3.4-56 6-14.9 2.3-29.8 3.2-45.1 3.2-15.2 0-30.1-.9-45.1-3.2-18.7-2.6-37-6-56-6-46.8 0-73.5 38.7-73.5 82.6 0 87.8 80.4 101.3 150.4 101.3h48.2c70.3 0 150.6-13.4 150.6-101.3zm-82.6-55.1c-25.8 0-36.7 34.2-36.7 55.1s10.9 55.1 36.7 55.1 36.7-34.2 36.7-55.1-10.9-55.1-36.7-55.1z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    geometry-labs/lattice-algebra
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="lattice-algebra" class="md-nav__button md-logo" aria-label="lattice-algebra" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    lattice-algebra
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/geometry-labs/lattice-algebra" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 512"><!--! Font Awesome Free 6.1.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M186.1 328.7c0 20.9-10.9 55.1-36.7 55.1s-36.7-34.2-36.7-55.1 10.9-55.1 36.7-55.1 36.7 34.2 36.7 55.1zM480 278.2c0 31.9-3.2 65.7-17.5 95-37.9 76.6-142.1 74.8-216.7 74.8-75.8 0-186.2 2.7-225.6-74.8-14.6-29-20.2-63.1-20.2-95 0-41.9 13.9-81.5 41.5-113.6-5.2-15.8-7.7-32.4-7.7-48.8 0-21.5 4.9-32.3 14.6-51.8 45.3 0 74.3 9 108.8 36 29-6.9 58.8-10 88.7-10 27 0 54.2 2.9 80.4 9.2 34-26.7 63-35.2 107.8-35.2 9.8 19.5 14.6 30.3 14.6 51.8 0 16.4-2.6 32.7-7.7 48.2 27.5 32.4 39 72.3 39 114.2zm-64.3 50.5c0-43.9-26.7-82.6-73.5-82.6-18.9 0-37 3.4-56 6-14.9 2.3-29.8 3.2-45.1 3.2-15.2 0-30.1-.9-45.1-3.2-18.7-2.6-37-6-56-6-46.8 0-73.5 38.7-73.5 82.6 0 87.8 80.4 101.3 150.4 101.3h48.2c70.3 0 150.6-13.4 150.6-101.3zm-82.6-55.1c-25.8 0-36.7 34.2-36.7 55.1s10.9 55.1 36.7 55.1 36.7-34.2 36.7-55.1-10.9-55.1-36.7-55.1z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    geometry-labs/lattice-algebra
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        Index
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../introduction/" class="md-nav__link">
+        Introduction
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cryptography/" class="md-nav__link">
+        Cryptography
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Under The Hood
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Under The Hood
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#class-details" class="md-nav__link">
+    Class Details
+  </a>
+  
+    <nav class="md-nav" aria-label="Class Details">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#latticeparameters" class="md-nav__link">
+    LatticeParameters
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#polynomial" class="md-nav__link">
+    Polynomial
+  </a>
+  
+    <nav class="md-nav" aria-label="Polynomial">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes-and-instantiation" class="md-nav__link">
+    Attributes and Instantiation
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#arithmetic" class="md-nav__link">
+    Arithmetic
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#polynomial-norm-weight-and-string-representation" class="md-nav__link">
+    Polynomial Norm, Weight, and String Representation
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#polynomialvector" class="md-nav__link">
+    PolynomialVector
+  </a>
+  
+    <nav class="md-nav" aria-label="PolynomialVector">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#polynomialvector-attributes-and-instantiation" class="md-nav__link">
+    PolynomialVector Attributes and Instantiation
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#polynomialvector-addition-subtraction-scaling-and-dot-products" class="md-nav__link">
+    PolynomialVector Addition, Subtraction, Scaling, and Dot Products
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#polynomialvector-norm-weight-and-string-representation" class="md-nav__link">
+    PolynomialVector Norm, Weight, and String Representation.
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        Installation
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../intended_usage/" class="md-nav__link">
+        Intended Usage
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#class-details" class="md-nav__link">
+    Class Details
+  </a>
+  
+    <nav class="md-nav" aria-label="Class Details">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#latticeparameters" class="md-nav__link">
+    LatticeParameters
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#polynomial" class="md-nav__link">
+    Polynomial
+  </a>
+  
+    <nav class="md-nav" aria-label="Polynomial">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes-and-instantiation" class="md-nav__link">
+    Attributes and Instantiation
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#arithmetic" class="md-nav__link">
+    Arithmetic
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#polynomial-norm-weight-and-string-representation" class="md-nav__link">
+    Polynomial Norm, Weight, and String Representation
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#polynomialvector" class="md-nav__link">
+    PolynomialVector
+  </a>
+  
+    <nav class="md-nav" aria-label="PolynomialVector">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#polynomialvector-attributes-and-instantiation" class="md-nav__link">
+    PolynomialVector Attributes and Instantiation
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#polynomialvector-addition-subtraction-scaling-and-dot-products" class="md-nav__link">
+    PolynomialVector Addition, Subtraction, Scaling, and Dot Products
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#polynomialvector-norm-weight-and-string-representation" class="md-nav__link">
+    PolynomialVector Norm, Weight, and String Representation.
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content" data-md-component="content">
+            <article class="md-content__inner md-typeset">
+              
+                
+
+
+<h1 id="under-the-hood">Under the Hood<a class="headerlink" href="#under-the-hood" title="Permanent link">&para;</a></h1>
+<p>The library is designed to make it <strong>easy for developers to write clean code that securely implements lattice-based cryptography</strong> for protocols and applications. The package is optimized to use the Number Theoretic Transform (NTT) to multiply polynomials in time <code>O(2dlog(2d))</code>, and uses <strong>constant-time modular arithmetic to avoid timing attacks</strong>. For convenience, we included tools for both <em>hashing to</em> and <em>sampling from</em> these "suitably small" polynomials and vectors. Both the hashing and sampling are carried out such that the bias of the resulting distribution is negligibly different from uniform.</p>
+<p>One way that the <code>lattice-algebra</code> toolkit helps developers write succinct code is by leveraging python's <strong>magic methods for arithmetic with elements from <code>R</code> and <code>R^l</code></strong>. For example, suppose we have two polynomials <code>f</code> and <code>g</code>. Simple expressions such as <code>f + g</code>, <code>f - g</code>, and <code>f * g</code> carry out <strong>constant-time polynomial arithmetic</strong> such as addition, subtraction, and multiplication (respectively). Likewise if we have two vectors of polynomials  <code>x</code> and <code>y</code>, several vector arithmetic methods are at our disposal: we can add them like <code>x + y</code>, or calculate the dot product as <code>x * y</code>. Additionally, <code>x ** f</code> scales a vector <code>x</code> by the polynomial <code>f</code>, which is useful for constructing digital signatures.</p>
+<h2 id="class-details">Class Details<a class="headerlink" href="#class-details" title="Permanent link">&para;</a></h2>
+<p>This package handles three fundamental objects: LatticeParameters, Polynomial, and PolynomialVector. The Polynomial and PolynomialVector objects have a LatticeParameters attribute, and the package handles computations with Polynomial and PolynomialVector objects with matching LatticeParameters.</p>
+<h3 id="latticeparameters">LatticeParameters<a class="headerlink" href="#latticeparameters" title="Permanent link">&para;</a></h3>
+<p>The LatticeParameters class contains attributes describing the ring <code>R</code>, namely the degree <code>d</code>, the module length <code>l</code>, and the modulus <code>q</code>. From these, additional data are pre-computed for use in various algorithms later. We instantiate a LatticeParameters object by specifying the degree, length, and modulus in the following way.</p>
+<p><code>lp = LatticeParameters(degree=2**10, length=2**4, modulus=12289)</code></p>
+<p>We must instantiate LatticeParameters objects by passing in degree, length, and modulus. These must all be positive integers such that the degree is a power of two and <code>(modulus - 1) % (2 * degree) == 0</code> otherwise a ValueError is raised.</p>
+<h3 id="polynomial">Polynomial<a class="headerlink" href="#polynomial" title="Permanent link">&para;</a></h3>
+<h4 id="attributes-and-instantiation">Attributes and Instantiation<a class="headerlink" href="#attributes-and-instantiation" title="Permanent link">&para;</a></h4>
+<p>The Polynomial and PolynomialVector objects have a LatticeParameters attribute, <code>lp</code>, and the package handles computations with Polynomial and PolynomialVector objects with matching LatticeParameters.</p>
+<p>Other than the LatticeParameters object attached to each Polynomial, the Polynomial object also has an <code>ntt_representation</code> attribute, which is a list of integers. To instantiate a Polynomial, we pass in the coefficient representation of the polynomial as a dictionary of key-value pairs, where the keys are integers in the set <code>[0, 1, ..., degree - 1]</code> and the value associated with a key is the coefficient of the associated monomial, which is assumed to be a representative of an equivalence class of integers modulo <code>modulus</code>. The coefficients are centralized to be in the list <code>[-(modulus//2), -(modulus//2)+1, ..., modulus//2 - 1, modulus//2]</code> with constant-time modular arithmetic.</p>
+<p>For example, if <code>modulus = 61</code> and we want to represent <code>3 * X**2 + 9 * X + 17</code>, we see the coefficient on the monomial <code>X**0 = 1</code> is <code>17</code>, the coefficient on the monomial <code>X</code> is <code>9</code>, and the coefficient on the monomial <code>X**2</code> is <code>3</code>. So we can pack the coefficient representation of this polynomial into a dictionary like <code>{0: 17, 1: 9, 2: 3}</code>. So, to create a Polynomial object representing this polynomial, we use the following.</p>
+<p><code>f = Polynomial(pars=lp, coefs={0: 17, 1: 9, 2: 3})</code></p>
+<h4 id="arithmetic">Arithmetic<a class="headerlink" href="#arithmetic" title="Permanent link">&para;</a></h4>
+<p>Polynomials support <code>__add__</code>, <code>__radd__</code>, <code>__sub__</code>, <code>__mul__</code>, and <code>__rmul__</code>. Thus, for two polynomials, say <code>f</code> and <code>g</code>, we simply use <code>f + g</code>, <code>f - g</code>, and <code>f*g</code> for addition, subtraction, and multiplication. Arithmetic for these operations take place coordinate-wise with the <code>ntt_representation</code> list, so they are very fast.</p>
+<h4 id="polynomial-norm-weight-and-string-representation">Polynomial Norm, Weight, and String Representation<a class="headerlink" href="#polynomial-norm-weight-and-string-representation" title="Permanent link">&para;</a></h4>
+<p>Polynomials have a <code>cooefficient_representation_and_norm_and_weight</code> method, which inverts the <code>ntt_representation</code> list to obtain the coefficient representation of the polynomial, and returns this coefficient representation together with the infinity norm and the Hamming weight of the polynomial.</p>
+<p>The package uses <code>__repr___</code> to cast the output of <code>get_coef_rep</code> as a string.</p>
+<p><em>WARNING</em>: Computing the <code>ntt_representation</code> requires computing the NTT of the polynomial, and calling <code>get_coef_rep</code> requires computing the inverse NTT of the polynomial. These are relatively expensive operations compared to arithmetic. Hence, <em>creating polynomials</em>, <em>printing them to strings</em>, and <em>computing the norm and weight</em> of polynomials should be done once, after all other computations are complete.</p>
+<h3 id="polynomialvector">PolynomialVector<a class="headerlink" href="#polynomialvector" title="Permanent link">&para;</a></h3>
+<h4 id="polynomialvector-attributes-and-instantiation">PolynomialVector Attributes and Instantiation<a class="headerlink" href="#polynomialvector-attributes-and-instantiation" title="Permanent link">&para;</a></h4>
+<p>The Polynomial and PolynomialVector objects have a LatticeParameters attribute, <code>par</code>, and the package handles computations with Polynomial and PolynomialVector objects with matching LatticeParameters.</p>
+<p>Other than the LatticeParameters object attached to each PolynomialVector has an <code>entries</code> attribute, which is just a list of Polynomial objects. To instantiate a PolynomialVector, we pass in a list of Polynomial objects as the entries.</p>
+<p>For example, if <code>f</code> is the Polynomial from the previous section and <code>g(X) = -17 + 12 * X ** 2</code>, we can create <code>g</code> and create a PolynomialVector object in the following way.</p>
+<div class="highlight"><pre><span></span><code>g = Polynomial(pars=lp, coefs={0: -17, 2: 12})
+v = PolynomialVector(pars=lp, entries=[f, g])
+</code></pre></div>
+<p>Each Polynomial in <code>entries</code> must have the same LatticeParameters object as <code>v</code> and we must have <code>len(entries) == lp.length</code>.</p>
+<h4 id="polynomialvector-addition-subtraction-scaling-and-dot-products">PolynomialVector Addition, Subtraction, Scaling, and Dot Products<a class="headerlink" href="#polynomialvector-addition-subtraction-scaling-and-dot-products" title="Permanent link">&para;</a></h4>
+<p>PolynomialVector objects support <code>__add__</code>, <code>__radd__</code>, and <code>__sub__</code> to define addition and subtraction between PolynomialVector objects. This way, for two PolynomialVector objects, say <code>v</code> and <code>w</code>, we can just use <code>v + w</code> and <code>v - w</code> to compute the sum and difference, respectively.</p>
+<p>The package uses <code>__mul__</code> and <code>__rmul__</code> to define the <strong>dot product</strong> between two PolynomialVector objects. The dot product outputs a Polynomial object. For example, if <code>v.entries == [f, g]</code> and <code>w.entries == [a, b]</code>, then <code>v * w</code> returns <code>f * a + g * b</code>.</p>
+<p>The package repurposes <code>__pow__</code> to scale a PolynomialVector by a Polynomial. For example, if <code>v.entries = [f, g]</code> and <code>a</code> is some Polynomial object, then <code>v ** a = [a * f, a * g]</code>. This is <strong>not</strong> exponentiation, although we use the notation for exponentiation.</p>
+<p>Hence, to compute a linear combination of PolynomialVectors whose coefficients are Polynomials, we compute the sum of "exponents" with something like this: <code>sum(f ** a for f, a in zip(some_polynomial_vectors, some_polynomials))</code>. As before, arithmetic operations are done using the <code>ntt_representation</code> of the involved polynomials, and are thus quite fast.</p>
+<h4 id="polynomialvector-norm-weight-and-string-representation">PolynomialVector Norm, Weight, and String Representation.<a class="headerlink" href="#polynomialvector-norm-weight-and-string-representation" title="Permanent link">&para;</a></h4>
+<p>The string representation of a PolynomialVector, defined in <code>__repr__</code> is merely <code>str(entries)</code>.</p>
+<p><em>WARNING</em>: Like for <code>Polynomial</code>, instantiation requires computing the NTT of polynomials. So our previous warning about the cost of computing the NTT and the inverse NTT applies here, but with the added curse of dimensionality.</p>
+
+              
+            </article>
+          </div>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    <nav class="md-footer__inner md-grid" aria-label="Footer">
+      
+        
+        <a href="../cryptography/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Cryptography" rel="prev">
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+          </div>
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              Cryptography
+            </div>
+          </div>
+        </a>
+      
+      
+        
+        <a href="../installation/" class="md-footer__link md-footer__link--next" aria-label="Next: Installation" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              Installation
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+          </div>
+        </a>
+      
+    </nav>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    <script id="__config" type="application/json">{"base": "..", "features": ["search.suggest", "search.highlight", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2a1c317c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.748e2769.min.js"></script>
+      
+    
+  </body>
+</html>
